@@ -1,0 +1,3 @@
+pretty-midi==0.2.8
+pyFluidSynth==1.2.5
+
