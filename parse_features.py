@@ -4,24 +4,14 @@ sys.setrecursionlimit(100000)
 sys.path.append('./parse_utils')
 import numpy as np
 from glob import glob
-from fractions import Fraction
 from pretty_midi import Note
 import csv
 import time
-import shutil
-import collections
 import copy
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-
 from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
-
-from io import BytesIO
-from zipfile import ZipFile
-import urllib.request
-import os,sys,requests,csv
-from bs4 import BeautifulSoup as bs
 
 from main import XML_SCORE_PERFORM_MATCH as MATCH
 from parse_utils import *
@@ -31,10 +21,6 @@ dc = getcontext()
 dc.prec = 48
 dc.rounding = ROUND_HALF_UP
 
-'''
-* About This code: 
-
-'''
 
 def crawl_yamaha_chopin():
     '''
@@ -89,7 +75,6 @@ def crawl_yamaha_chopin():
                             output.write(saveData)
                             output.close()
 
-
 def search(dirname):
     """ 
     * Function to search 3 kinds of files in 'dirname'
@@ -131,10 +116,8 @@ def search(dirname):
     
     return xml_list, score_midi_list, perform_midi_list
 
-
 def save_matched_files(dirname):
     # parent directories
-    # dirname = './data/raw_samples'
     program_dir = './parse_data'
     # get directory lists
     xml_list, score_midi_list, perform_midi_list = search(dirname)
@@ -152,14 +135,9 @@ def save_matched_files(dirname):
             pair_path = os.path.join(
                 os.path.dirname(performs[0]), "xml_score_perform_pairs.npy")
             if os.path.exists(pair_path) is False:
-                # try:
                 _, _ = match(xml, score, performs, save_pairs=True, plot=True)	
-                # except:
-                    # print("** passed due to error: {}: {}".format(categ, piece))
-                    # continue
 
             print("saved pairs for {}:{}".format(categ, piece))
-
 
 def save_features_xml():
     # dirname = './data/raw_samples'
@@ -246,8 +224,7 @@ def save_features_xml():
                 print()
                 print("parsed {}/{} condition input".format(c_name, p_name))
 
-
-def save_features_midi(dirname, mode="note"):
+def save_features_midi(dirname):
 
     # dirname = './data/raw_samples'
     categs = sorted(glob(os.path.join(dirname, "*/")))
@@ -279,15 +256,9 @@ def save_features_midi(dirname, mode="note"):
                     all_matched_num += matched_num
                     all_perform_num += perform_num
 
-                    #print("parsed {}/{} output: player {}".format(c_name, p_name, pl_name))
-                    # try:
                     input_list, output_list = parse_midi_features(
-                        mode=mode, pair_path=pair_path,
+                        pair_path=pair_path,
                         same_onset_ind=[110,112], null_tempo=120)
-                    # except AssertionError:
-                    #     print("** passed due to AssetionError: {}: {} (player {})".format(
-                    #         c_name, p_name, pl_name))
-                    #     continue
 
                     # save outputs
                     np.save(os.path.join(player, 'inp.npy'), input_list)
@@ -297,7 +268,6 @@ def save_features_midi(dirname, mode="note"):
                         c_name, p_name, pl_name, len(input_list), len(output_list)))
     print("matched note number: {}".format(all_matched_num))
     print("perform note number: {}".format(all_perform_num))
-
 
 def parse_test_cond(
     pair=None, pair_path=None, small_ver=True, tempo=None, time_sig=None, key_sig=None):
@@ -350,8 +320,8 @@ def parse_test_cond(
 
     return out
 
-
-def interpolate_feature(output_list, input_list, note_list, f_type=None, same_onset_ind=None):
+def interpolate_feature(
+    output_list, input_list, note_list, f_type=None, same_onset_ind=None):
     '''
     f_type: [ioi1, ioi2, dur]
     '''
@@ -410,9 +380,8 @@ def interpolate_feature(output_list, input_list, note_list, f_type=None, same_on
     
     return target_list, non_f_list
 
-
 def parse_midi_features(
-    mode=None, pairs_score=None, pair_path=None,
+    pairs_score=None, pair_path=None,
     tempo=None, null_tempo=None, same_onset_ind=None):
 
     '''
@@ -427,9 +396,7 @@ def parse_midi_features(
     # pairs_score = None 
     # midi_notes = None
     # null_tempo = 120
-    # mode = "note" 
     ###################
-
 
     if pair_path is not None:
         pairs = np.load(pair_path, allow_pickle=True).tolist()
@@ -475,15 +442,6 @@ def parse_midi_features(
         [n['perform_midi'][1].start for n in first_onset_group])
     first_onset_score = np.min(
         [n['xml_note'][1].note_duration.time_position for n in pairs_score_onset[0]])
-
-    # print("** first perform onset: {:.4f}".format(first_onset_perform))
-    # print("** first score onset: {:.4f}".format(first_onset_score))
-
-    # get score midi for check
-    # if midi_path is not None:
-    #     midi_notes, _ = extract_midi_notes(midi_path, clean=True)
-    # if midi_notes is not None:
-    #     midi_notes = midi_notes
 
     # set first onsets to 0 for score and perform
     for note in pairs_score:
@@ -618,20 +576,10 @@ def parse_midi_features(
         next_onset_perform_list.append(next_onset_perform)	
         note_list.append([note_ind, parsed_note])
 
-        # print()
-        # print(same_onset_values)
-        # print("{},{},{},{},".format(
-            # parsed_note.is_same_onset, base_onset_perform, mean_onset_perform, next_onset_perform))
-
         _input = parsed_note.get_input_features(
             base_onset_score, next_onset_score)
         _output = parsed_note.get_output_features(
-            base_onset_perform, mean_onset_perform, next_onset_perform, mode=mode)
-
-        # ioi1s.append(float(parsed_note.ioi_ratio1))
-        # ioi2s.append(float(parsed_note.ioi_ratio2))
-        # mode_ioi1 = stats.mode(ioi1s, axis=None).mode[0]
-        # mode_ioi2 = stats.mode(ioi2s, axis=None).mode[0]
+            base_onset_perform, next_onset_perform)
 
         # print(_output, parsed_note.is_same_onset)
         if parsed_note.ioi_ratio2 <= 0 or parsed_note.ioi_ratio1 <= 0:
@@ -657,21 +605,12 @@ def parse_midi_features(
     oup_ind = sorted([i[0] for i in output_list])
 
     # find missing parts for iois (ioi1 & ioi2)
-    assert mode == "note"
     output_list_, non_durs = interpolate_feature(output_list, input_list, note_list, 
         f_type="dur", same_onset_ind=same_onset_ind)
     output_list_, non_ioi1s = interpolate_feature(output_list_, input_list, note_list,
         f_type="ioi1", same_onset_ind=same_onset_ind)
     output_list_, non_ioi2s = interpolate_feature(output_list_, input_list, note_list, 
         f_type="ioi2", same_onset_ind=same_onset_ind)
-
-    # for n in non_ioi1s:
-    #     print(output_list[n[0][1]-1], nn)
-    #     for nn in n:
-    #         print(output_list[nn[1]], nn)
-    #         print(output_list_[nn[1]], nn)
-    #     print(output_list[n[-1][1]+1], nn)
-    #     print()
 
     # to numpy array
     input_list = np.array(input_list, dtype=object)
@@ -693,38 +632,14 @@ def parse_midi_features(
 
     return input_list, output_list
 
-
 def parse_test_features_noY(
-    xml, score, mode=None, measures=None,
+    xml, score, measures=None,
     tempo=None, null_tempo=None, same_onset_ind=None):
 
     '''
     * function for parsing MIDI features
         - always parse in order of SCORE MIDI 
     '''
-
-    ## FOR DEBUGGING ## 
-    # pair_path = '/data/chopin_cleaned/original/Chopin_Etude/10_1/02/xml_score_perform_pairs.npy'
-    # midi_path = '/data/chopin_cleaned/original/Chopin_Etude/10_1/score_plain.mid'
-    # pairs_score = None 
-    # midi_notes = None 
-    # tempo = 176
-
-    # pair_path = '/data/chopin_cleaned/original/Chopin_Etude/10_8/03/xml_score_perform_pairs.npy'
-    # xml = '/data/chopin_cleaned/original/Chopin_Etude/10_8/musicxml_cleaned_plain.musicxml'
-    # pair_path = '/data/chopin_cleaned/original/Chopin_Berceuse/57/02/xml_score_perform_pairs.npy'
-    # xml = '/data/chopin_cleaned/original/Chopin_Berceuse/57/musicxml_cleaned_plain.musicxml'
-        
-    # xml = '/data/pianotab/original/starwars.musicxml'
-    # score = '/data/pianotab/original/starwars.mid'
-
-    # tempo, time_sig, key_sig = get_signatures_from_xml(xml, measure_start=0)
-    # pairs_score = None 
-    # midi_notes = None
-    # null_tempo = 120
-    # mode = "note" 
-
-    ###################
 
     match = MATCH(
         current_dir=os.getcwd(),
@@ -746,22 +661,12 @@ def parse_test_features_noY(
             if measure_num >= start_measure and measure_num <= end_measure:
                 pairs_score.append(note)
         pairs_score = sorted(pairs_score, key=lambda x: x['xml_note'][0])
-        # note_ind = [n['score_midi'][0] for n in pairs_score]
 
     # get first onsets
     pairs_score_onset = make_onset_pairs(pairs_score, fmt="xml")
     first_onset_score = np.min(
         [n['xml_note'][1].note_duration.time_position \
             for n in pairs_score_onset[0]])
-
-    # print("** first perform onset: {:.4f}".format(first_onset_perform))
-    # print("** first score onset: {:.4f}".format(first_onset_score))
-
-    # get score midi for check
-    # if midi_path is not None:
-    #     midi_notes, _ = extract_midi_notes(midi_path, clean=True)
-    # if midi_notes is not None:
-    #     midi_notes = midi_notes
 
     # set first onsets to 0 for score and perform
     for note in pairs_score:
@@ -865,21 +770,8 @@ def parse_test_features_noY(
         next_onset_list.append(float(next_onset_score))	
         note_list.append([note_ind, parsed_note])
 
-        # print()
-        # print(same_onset_values)
-        # print("{},{},{},{},".format(
-            # parsed_note.is_same_onset, base_onset_perform, mean_onset_perform, next_onset_perform))
-
         _input = parsed_note.get_input_features(
             base_onset_score, next_onset_score)
-
-
-        # print(_output, parsed_note.is_same_onset)
-        # if parsed_note.ioi_ratio2 <= 0 or parsed_note.ioi_ratio1 <= 0:
-        #     print(base_onset_score, mean_onset_score, next_onset_score, parsed_note.is_same_onset)
-        #     print(parsed_note.score_ioi_norm1)
-        #     print()
-        #     break
 
         input_list.append([note_ind, _input])
         
@@ -912,9 +804,8 @@ def parse_test_features_noY(
 
     return inp, pairs_score, note_ind
 
-
 def parse_test_features(
-    xml=None, score=None, perform=None, corresp=None, mode=None, 
+    xml=None, score=None, perform=None, corresp=None,
     pair_path=None, measures=None, tempo=None, null_tempo=120, same_onset_ind=None):
 
     if type(perform) is not list:
@@ -957,7 +848,7 @@ def parse_test_features(
 
     # parse output features
     input_list_, output_list_ = parse_midi_features(
-        mode=mode, pairs_score=pairs_score,
+        pairs_score=pairs_score,
         tempo=tempo, null_tempo=null_tempo, same_onset_ind=same_onset_ind)
 
     for i, o in zip(input_list_, output_list_):
@@ -974,7 +865,6 @@ def parse_test_features(
 
 
 
-
 #----------------------------------------------------------------------------------#
 
 # Class for parsing MIDI features(input/output)
@@ -986,8 +876,6 @@ class MIDIFeatures(object):
                  note_ind=None,
                  tempo_=None,
                  fmt="xml",
-                 mode_ioi1=None,
-                 mode_ioi2=None,
                  null_tempo=120):
 
         # Inputs
@@ -1030,7 +918,6 @@ class MIDIFeatures(object):
         self.perform_dur = None
         self.perform_ioi1 = None
         self.perform_ioi2 = None
-        self.local_dev = None 
         self.tempo = tempo_
         self.null_tempo = null_tempo
         self.tempo_ratio = None #Decimal(1.)
@@ -1076,21 +963,15 @@ class MIDIFeatures(object):
         return self._input	
 
     def get_output_features(
-        self, onset_for_ioi, mean_onset, next_onset_for_ioi, mode=None): #, pooled_ioi
+        self, onset_for_ioi, next_onset_for_ioi):
         '''
         outputs based on performed attributes
         '''
         self.get_velocity() # velocity value v
-        if mode == 'note':
-            self.get_ioi_ratio_note(onset_for_ioi, next_onset_for_ioi) # ioi ratio
-        elif mode == 'group':
-            self.get_ioi_ratio(onset_for_ioi, mean_onset, next_onset_for_ioi) # ioi ratio v
-            self.get_local_dev_raw(mean_onset)
+        self.get_ioi_ratio(onset_for_ioi, next_onset_for_ioi) # ioi ratio
         self.get_duration_ratio() # duration ratio v
         
-        # self.get_local_dev_ratio(mean_onset)
-        
-        self.output_to_vector(mode=mode)
+        self.output_to_vector()
         return self._output
 
     def input_to_vector_16(self):
@@ -1114,41 +995,14 @@ class MIDIFeatures(object):
         self._input = np.concatenate(
             [_score_ioi, _score_dur, _pitch, _same_onset, _top], axis=-1)
 
-    def input_to_vector_48(self):
-        _score_ioi = np.zeros([50,])
-        _score_ioi[self.ioi_class] = 1
-        _score_dur = np.zeros([50,])
-        _score_dur[self.dur_class] = 1
-        _pitch = np.zeros([88,])
-        _pitch[self.pitch] = 1
-        _same_onset = np.zeros([2,])
-        _same_onset[int(self.is_same_onset)] = 1
-        _top = np.zeros([2,])
-        _top[int(self.is_top)] = 1
-
-        assert np.sum(_score_ioi) == 1
-        assert np.sum(_score_dur) == 1
-        assert np.sum(_pitch) == 1
-        assert np.sum(_same_onset) == 1
-        assert np.sum(_top) == 1
-
-        self._input = np.concatenate(
-            [_score_ioi, _score_dur, _pitch, _same_onset, _top], axis=-1)
-
-    def output_to_vector(self, mode=None):
+    def output_to_vector(self):
         _velocity = self.velocity
-        if mode == "group":
-            _local_dev = float(self.local_dev)
         _dur_ratio = float(self.dur_ratio)
         _ioi_ratio1 = float(self.ioi_ratio1)
         _ioi_ratio2 = float(self.ioi_ratio2)
         
-        if mode == "note":
-            self._output = np.stack(
-                [_velocity, _dur_ratio, _ioi_ratio1, _ioi_ratio2], axis=-1) # note-level
-        elif mode == "group":
-            self._output = np.stack(
-                [_velocity, _local_dev, _dur_ratio, _ioi_ratio1, _ioi_ratio2], axis=-1)
+        self._output = np.stack(
+            [_velocity, _dur_ratio, _ioi_ratio1, _ioi_ratio2], axis=-1) # note-level
 
     ## FUNCTIONS FOR FEATURES ##
     def get_tempo(self):
@@ -1199,18 +1053,6 @@ class MIDIFeatures(object):
         # self.score_dur = round(self.score_dur, 3)
         assert self.score_dur > 0
 
-        # # get note onset in xml 
-        # if self.xml_note is not None:
-        #     self.xml_onset = Decimal(str(self.xml_note.note_duration.time_position))
-        # elif self.xml_note is None:
-        #     self.xml_onset = self.score_onset    
-
-        # # get previous note onset in xml
-        # if self.prev_xml_note is not None:
-        #     self.prev_xml_onset = Decimal(str(self.prev_xml_note.note_duration.time_position))
-        # elif self.prev_xml_note is None:
-        #     self.prev_xml_onset = None
-
         # DECIDE is_same_onset
         if self.prev_note is None:
             self.is_same_onset = False
@@ -1225,40 +1067,11 @@ class MIDIFeatures(object):
             if self.score_onset > self.prev_note.score_onset: 
                 self.is_same_onset = False # decide only with midi
 
-                # if self.xml_note is None: # no xml data 
-                #     self.is_same_onset = False # decide only with midi
-                # elif self.xml_note is not None: # with xml data
-                #     if self.prev_xml_onset is not None:
-                #         if self.xml_onset > self.prev_xml_onset:
-                #             self.is_same_onset = False
-                #             # print(self.note, self.prev_note.note) 
-                #         elif self.xml_onset == self.prev_xml_onset:
-                #             self.is_same_onset = True
-                #     elif self.prev_xml_onset is None:
-                #         self.is_same_onset = False
-            
             # if score onset same as previous note
             elif self.score_onset == self.prev_note.score_onset:
-                self.is_same_onset = True
-
-                # if self.xml_note is None: # no xml data 
-                #     self.is_same_onset = True # decide only with midi
-                # elif self.xml_note is not None: # with xml data
-                #     if self.prev_xml_onset is not None:
-                #         if self.xml_onset > self.prev_xml_onset:
-                #             self.is_same_onset = False
-                #             # print(self.note, self.prev_note.note) 
-                #         elif self.xml_onset == self.prev_xml_onset:
-                #             self.is_same_onset = True
-                #     elif self.prev_xml_onset is None:
-                #         self.is_same_onset = False                
+                self.is_same_onset = True           
         
         assert self.is_same_onset is not None
-        # print(self.note)
-        # if self.score_onset is not None and self.prev_note is not None:
-            # print("{}, {} / {}, {}".format(
-                # self.score_onset, self.prev_note.score_onset, self.xml_onset, self.prev_xml_onset))
-        # print(self.is_same_onset)
     
     def get_perform_attributes(self):
         if self.perform_note is None:
@@ -1375,22 +1188,6 @@ class MIDIFeatures(object):
         elif self.dur_units > 16.0:
             self.dur_class = 10 # longer
 
-    def get_ioi_class_48(self):
-    	'''
-    	score midi duration based on unit of 48th note
-    	'''
-    	self.ioi_q = quantize(self.score_ioi1, self.dur_48th)
-    	self.ioi_units = round(Decimal(str(self.ioi_q)) / self.dur_48th)
-    	self.ioi_class = min(self.ioi_units, 49)
-
-    def get_dur_class_48(self):
-    	'''
-    	score midi duration based on unit of 48th note
-    	'''
-    	self.dur_q = quantize(self.score_dur, self.dur_48th)
-    	self.dur_units = round(Decimal(str(self.dur_q)) / self.dur_48th)
-    	self.dur_class = min(self.dur_units, 49) 
-
     def get_score_ioi(self, onset_for_ioi, next_onset_for_ioi):
         '''
         score midi ioi based on null tempo
@@ -1453,81 +1250,7 @@ class MIDIFeatures(object):
             elif self.prev_note is not None:
                 self.velocity = self.prev_note.velocity
 
-        # self.q_vel = int(self.velocity // 4) # quantize to 32 classes
-
-    def get_ioi_ratio(self, onset_for_ioi, mean_onset, next_onset_for_ioi):
-        '''
-        ratio of perform midi ioi / score midi(norm) ioi 
-        '''
-        # previous onset for computing ioi
-        if onset_for_ioi is not None:
-            self.base_onset_perform = Decimal(str(onset_for_ioi))
-        elif onset_for_ioi is None:
-            self.base_onset_perform = None
-
-        # next onset for computing ioi
-        if next_onset_for_ioi is not None:
-            self.next_onset_perform = Decimal(str(next_onset_for_ioi))
-        elif next_onset_for_ioi is None:
-            self.next_onset_perform = None
-
-        # current mean onset
-        if mean_onset is not None:
-            self.mean_onset = Decimal(str(mean_onset))
-        elif mean_onset is None:
-            self.mean_onset = None		
-
-        # compute IOI 1 (current(chord) - prev(chord))
-        if self.base_onset_perform is not None:
-            if self.mean_onset is not None:
-                self.perform_ioi1 = self.mean_onset - self.base_onset_perform
-                # ioi value is not 0 
-                if self.perform_ioi1 < Decimal(str(1e-3)):
-                    self.perform_ioi1 = Decimal(str(1e-3))
-                # compute ioi ratio
-                self.ioi_ratio1 = self.perform_ioi1 / self.score_ioi_norm1
-
-            elif self.mean_onset is None:
-                if self.prev_note is None:
-                    self.ioi_ratio1 = 1 / self.tempo_ratio
-                elif self.prev_note is not None:
-                    self.ioi_ratio1 = self.prev_note.ioi_ratio1
-
-        elif self.base_onset_perform is None:
-            if self.prev_note is None:
-                self.ioi_ratio1 = 1 / self.tempo_ratio # (null tempo / real tempo)
-            elif self.prev_note is not None:
-                self.ioi_ratio1 = self.prev_note.ioi_ratio1 
-
-        # compute IOI 2 (next(chord) - current("note"))
-        if self.next_onset_perform is not None:
-            if self.perform_onset is not None:
-                self.perform_ioi2 = self.next_onset_perform - self.perform_onset
-                # ioi value is not 0 
-                if self.perform_ioi2 < Decimal(str(1e-3)):
-                    self.perform_ioi2 = Decimal(str(1e-3))
-                # compute ioi ratio
-                self.ioi_ratio2 = self.perform_ioi2 / self.score_ioi_norm2
-
-            elif self.perform_onset is None:
-                if self.prev_note is None:
-                    self.ioi_ratio2 = 1 / self.tempo_ratio
-                elif self.prev_note is not None:
-                    self.ioi_ratio2 = self.prev_note.ioi_ratio2
-
-        elif self.next_onset_perform is None:
-            if self.prev_note is None:
-                self.ioi_ratio2 = 1 / self.tempo_ratio # (null tempo / real tempo)
-            elif self.prev_note is not None:
-                self.ioi_ratio2 = self.prev_note.ioi_ratio2 
-
-        # self.ioi_ratio = round(self.ioi_ratio, 4)
-        if self.ioi_ratio1 <= 0 or self.ioi_ratio2 <= 0.:
-            print("** perform ioi ratio <= 0 !!")
-            print(self.note_ind, self.ioi_ratio1, self.base_onset_perform, self.mean_onset)
-            print(self.note_ind, self.ioi_ratio2, self.mean_onset, self.next_onset_perform)
-
-    def get_ioi_ratio_note(self, onset_for_ioi, next_onset_for_ioi):
+    def get_ioi_ratio(self, onset_for_ioi, next_onset_for_ioi):
         '''
         ratio of perform midi ioi / score midi(norm) ioi 
         '''
@@ -1599,112 +1322,6 @@ class MIDIFeatures(object):
             print("** perform ioi ratio <= 0 !!")
             print(self.note_ind, self.ioi_ratio1, self.score_ioi_norm1, self.base_onset_perform, self.perform_onset)
             print(self.note_ind, self.ioi_ratio2, self.score_ioi_norm2, self.perform_onset, self.next_onset_perform)
-
-    def get_local_dev(self, pooled_ioi):
-        '''
-        ratio of perform midi ioi / score midi(norm) ioi 
-        '''
-        # get perform ioi and compute ioi ratio
-
-        self.pooled_ioi_ratio = Decimal(str(pooled_ioi))
-
-        if self.perform_ioi1 is not None:
-            self.base_ioi = self.perform_ioi1 * (self.pooled_ioi_ratio / self.ioi_ratio1)
-            self.in_tempo_onset = self.base_onset_perform + self.base_ioi
-
-            if self.perform_note is not None:
-                self.local_dev = self.perform_onset - self.in_tempo_onset
-
-            elif self.perform_note is None:
-                if self.is_same_onset is True:
-                    self.local_dev = self.prev_note.local_dev 
-                elif self.is_same_onset is False:
-                    self.local_dev = Decimal(str(0.))
-
-        elif self.perform_ioi1 is None:
-            if self.is_same_onset is True:
-                self.local_dev = self.prev_note.local_dev 
-            elif self.is_same_onset is False:
-                self.local_dev = Decimal(str(0.))
-
-    def get_local_dev_ratio2(self, pooled_ioi):
-        '''
-        ratio of perform midi ioi / score midi(norm) ioi 
-        '''
-        # get perform ioi and compute ioi ratio
-
-        self.pooled_ioi_ratio = Decimal(str(pooled_ioi))
-
-        if self.perform_ioi1 is not None:
-            self.base_ioi = self.pooled_ioi_ratio * self.score_ioi_norm1
-            self.in_tempo_onset = self.base_onset_perform + self.base_ioi
-
-            if self.perform_note is not None:
-                self.local_dev_time = self.perform_onset - self.in_tempo_onset
-                self.local_dev_ratio = self.local_dev_time / self.base_ioi
-
-            elif self.perform_note is None:
-                if self.is_same_onset is True:
-                    self.local_dev_ratio = self.prev_note.local_dev_ratio 
-                elif self.is_same_onset is False:
-                    self.local_dev_ratio = Decimal(str(0.))
-
-        elif self.perform_ioi1 is None:
-            if self.is_same_onset is True:
-                self.local_dev_ratio = self.prev_note.local_dev_ratio 
-            elif self.is_same_onset is False:
-                self.local_dev_ratio = Decimal(str(0.))
-
-    def get_local_dev_raw(self, mean_onset):
-        '''
-        ratio of perform midi ioi / score midi(norm) ioi 
-        '''
-        # get perform ioi and compute ioi ratio
-        if mean_onset is not None:
-            self.mean_onset = Decimal(str(mean_onset))
-        elif mean_onset is None:
-            self.mean_onset = None
-
-        if self.mean_onset is not None:
-            if self.perform_note is not None:
-                self.local_dev = self.perform_onset - self.mean_onset
-
-            elif self.perform_note is None:
-                self.local_dev = Decimal(str(0.))
-                # if self.prev_note is None:
-                # 	self.local_dev = Decimal(str(0.))
-                # elif self.prev_note is not None:
-                # 	self.local_dev = self.prev_note.local_dev
-
-        elif self.mean_onset is None:
-            self.local_dev = Decimal(str(0.))
-            # if self.prev_note is None:
-            # 	self.local_dev = Decimal(str(0.))
-            # elif self.prev_note is not None:
-            # 	self.local_dev = self.prev_note.local_dev 
-
-        # self.local_dev = round(self.local_dev, 6)
-
-    def get_local_dev_ratio(self, mean_onset):
-        '''
-        ratio of perform midi ioi / score midi(norm) ioi 
-        '''
-        # get perform ioi and compute ioi ratio
-        if mean_onset is not None:
-            self.mean_onset = Decimal(str(mean_onset))
-        elif mean_onset is None:
-            self.mean_onset = None
-
-        if self.mean_onset is not None:
-            if self.perform_note is not None:
-                self.local_dev = self.perform_onset - self.mean_onset
-                self.local_dev_ratio = self.local_dev / self.dur_quarter
-
-            elif self.perform_note is None:
-                self.local_dev_ratio = Decimal(str(0.))
-
-        elif self.mean_onset is None:
-            self.local_dev_ratio = Decimal(str(0.))
 
     def get_duration_ratio(self):
         '''
@@ -1802,31 +1419,6 @@ class MIDIFeatures_test(MIDIFeatures):
         super().get_pitch()
         super().get_top_voice()
         super().input_to_vector_16()
-        return self._input	
-
-
-class MIDIFeatures_simple(MIDIFeatures):
-    def __init__(self, 
-                 note=None,
-                 note_ind=None):
-
-        # Inputs
-        self.note = note
-        self.score_note = note
-        self.note_ind = note_ind
-
-        # Features to parse
-        self.pitch = None
-        self.score_onset = None
-        self.score_offset = None
-        self._input = None
-
-    def get_input_features(self):
-        self.score_onset = self.score_note.start
-        self.score_offset = self.score_note.end
-        self.pitch = self.score_note.pitch
-        self._input = np.stack(
-            [self.score_onset, self.score_offset, self.pitch], axis=-1)
         return self._input	
 
 

@@ -1,18 +1,12 @@
 import numpy as np
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import sys 
 sys.path.append("./parse_utils")
 import time
 from glob import glob
 import pretty_midi 
-import h5py
-from decimal import Decimal, getcontext, ROUND_HALF_UP
-import pandas as pd
-import shutil
+from decimal import Decimal
 import copy
-import subprocess
-import importlib
 import warnings
 import gc
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -22,18 +16,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F 
 
-from make_batches \
-    import make_align_matrix, make_note_based, make_onset_based_pick, \
-           corrupt_to_onset, make_notenum_onehot, \
-           make_pianoroll_x, get_vertical_position
+from make_batches import (
+    make_align_matrix, 
+    corrupt_to_onset, 
+    make_notenum_onehot,
+    make_pianoroll_x, 
+    get_vertical_position
+)
 from parse_utils import *
-from parse_features \
-    import parse_test_cond, parse_test_features, parse_test_features_noY
+from parse_features import (
+    parse_test_cond, 
+    parse_test_features, 
+    parse_test_features_noY
+)
 import models.piano_model as model
 
 
 
-def inverse_rendering_art_note(
+def rendering_from_notes(
     input_notes=None, save_dir=None, cond=None, features=None, 
     tempo=None, tempo_rate=1., same_onset_ind=None, savename=None, 
     save_perform=True, save_score=False, return_notes=False):
@@ -198,8 +198,7 @@ def inverse_rendering_art_note(
     if return_notes == True:
         return rendered_notes
 
-
-def inverse_feature_note(
+def inverse_feature(
     sampled_y, art=False, numpy=False, interp=None, to_raw=True):
     vel = sampled_y[0,:,0]
     dur = sampled_y[0,:,1]
@@ -225,8 +224,7 @@ def inverse_feature_note(
 
     return vel, dur, ioi
 
-
-def get_feature_note(
+def get_feature(
     y, x=None, art=False, same_onset_ind=None):
     _y = y.copy()
     vel = _y[:,0]
@@ -251,8 +249,7 @@ def get_feature_note(
       
     return _y[:,:3]
 
-
-def features_by_condition_note(
+def features_by_condition(
     y, x=None, cond=None, ratio=0.3, art=None, same_onset_ind=None):
 
     # copy original features
@@ -289,7 +286,7 @@ def features_by_condition_note(
         y_ = y_
 
     # get features
-    y_new = get_feature_note(y_, x=x, art=art, same_onset_ind=same_onset_ind)
+    y_new = get_feature(y_, x=x, art=art, same_onset_ind=same_onset_ind)
 
     return y_new
 
@@ -380,7 +377,7 @@ class GetData(object):
 
     def data2input(self, test_x, test_y, test_m, cond=None, ratio=0.3, N=4, art=True, device=None):
 
-        y = features_by_condition_note(
+        y = features_by_condition(
             test_y, x=test_x, cond=cond, art=art, ratio=ratio, same_onset_ind=self.soi)  
         vel, art, ioi = y[:,0], y[:,1], y[:,2]
         y2 = corrupt_to_onset(
@@ -423,10 +420,6 @@ def test_model(
     song_name=None, measures=None, device_num=None,
     exp_num=None, same_onset_ind=[110,112]):
 
-    # test data paths
-    # song_name = "beethoven_piano_sonatas__8-2"
-    # same_onset_ind = [110,112]
-    # measures = [1, 16]
     song_name_ =  '/'.join(song_name.split('__'))
     parent_path = "./data/raw_samples"
     perform = [p for p in sorted(glob(os.path.join(parent_path, "{}/01/*.mid".format(
@@ -507,12 +500,12 @@ def test_model(
 
         # get results
         y_recon_vel, y_recon_dur, y_recon_ioi = \
-            inverse_feature_note(recon_note, art=True, numpy=False, interp="tanh")
+            inverse_feature(recon_note, art=True, numpy=False, interp="tanh")
         est_c_ = note2group.reverse(est_c, test_m_) 
         gt = test_y2_[0].cpu().data.numpy()
         clab = test_clab_[0].cpu().data.numpy()
         y_c_vel, y_c_dur, y_c_ioi = \
-            inverse_feature_note(est_c_, art=True, numpy=False, interp="tanh")
+            inverse_feature(est_c_, art=True, numpy=False, interp="tanh")
 
         est_c = est_c[0].cpu().data.numpy()
 
@@ -540,7 +533,7 @@ def test_model(
         print("** Sampling **")
         _, _, z0, \
             sampled0_note = model.sample(test_x_, test_m_)
-        y_sampled0 = inverse_feature_note(sampled0_note, art=True, numpy=False, interp=interp)
+        y_sampled0 = inverse_feature(sampled0_note, art=True, numpy=False, interp=interp)
         recon_group = corrupt_to_onset(test_x, recon_note[0].cpu().data.numpy(), same_onset_ind=same_onset_ind)
 
         # plot group-wise results
@@ -583,7 +576,7 @@ def test_model(
                 test_x_, test_m_, c_=c_seed_, z_=z, trunc=False, threshold=2)
             # inverse to feature
             vel, dur, ioi = \
-                inverse_feature_note(sampled, art=True, numpy=False, interp=interp)
+                inverse_feature(sampled, art=True, numpy=False, interp=interp)
             interp_t[a] = [alpha, [vel, dur, ioi], c_seed_, z_]
         print("     > sampled by tempo")
 
@@ -599,7 +592,7 @@ def test_model(
                     test_x_, test_m_, c_=c_seed_, z_=z, trunc=False, threshold=2)
             # inverse to feature
             vel, dur, ioi = \
-                inverse_feature_note(sampled, art=True, numpy=False, interp=interp)
+                inverse_feature(sampled, art=True, numpy=False, interp=interp)
             interp_d[a] = [alpha, [vel, dur, ioi], c_seed_, z_]
         print("     > sampled by dynamics")
 
@@ -615,7 +608,7 @@ def test_model(
                     test_x_, test_m_, c_=c_seed_, z_=z, trunc=False, threshold=2)
             # inverse to feature
             vel, dur, ioi = \
-                inverse_feature_note(sampled, art=True, numpy=False, interp=interp)
+                inverse_feature(sampled, art=True, numpy=False, interp=interp)
             interp_a[a] = [alpha, [vel, dur, ioi], c_seed_, z_]
         print("     > sampled by articulations")
 
@@ -625,7 +618,7 @@ def test_model(
             _, _, z_, sampled = model.sample(test_x_, test_m_, c_=c_seed_) # c_=c_seed_, 
             # inverse to feature
             vel, dur, ioi = \
-                inverse_feature_note(sampled, art=True, numpy=False, interp=interp)
+                inverse_feature(sampled, art=True, numpy=False, interp=interp)
             styles[a] = [alpha, [vel, dur, ioi], c_seed_, z_]
         print("     > sampled multiple styles (neutral)")
         print()
@@ -792,19 +785,19 @@ def test_model(
 
     ### RENDER MIDI ###
     print("** Render MIDI files** ")
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_t[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind, savename="slow_0_fast_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_t[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="slow_100_fast_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_d[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="quiet_0_loud_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_d[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="quiet_100_loud_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_a[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="stac_0_leg_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_a[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="stac_100_leg_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample1_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[1][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample2_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
-    inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[2][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample3_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_t[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind, savename="slow_0_fast_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_t[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="slow_100_fast_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_d[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="quiet_0_loud_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_d[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="quiet_100_loud_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_a[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="stac_0_leg_100_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=interp_a[4][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="stac_100_leg_0_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[0][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample1_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[1][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample2_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
+    rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=styles[2][1], tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="style_sample3_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False)
 
     # GT
     y_features = [test_y[:,0], y_art, y_ioi]
-    gt_notes = inverse_rendering_art_note(input_notes=xml_notes, save_dir="./", cond=test_x, features=y_features, tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="gt_features_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False, return_notes=True)
+    gt_notes = rendering_from_notes(input_notes=xml_notes, save_dir="./", cond=test_x, features=y_features, tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  savename="gt_features_{}_exp{}_{}_mm{}-{}.mid".format(song_name, exp_num, checkpoint_num, measures[0], measures[1]), save_score=False, return_notes=True)
     print()
     print("#################################")
     print()
@@ -813,10 +806,6 @@ def test_model(
 def generate_scratch(
     song_dir, sketch=[None, None, None], exp_num=None, device_num=None, same_onset_ind=[110,112]):
 
-    # same_onset_ind = [110,112]
-    # measures = [1, 16]
-    # song_dir = "./data/raw_samples/beethoven_piano_sonatas/8-2"
-    # save_path = "./"
     cuda_condition = torch.cuda.is_available()
     device = torch.device("cuda:{}".format(device_num) if cuda_condition else "cpu")
 
@@ -838,9 +827,6 @@ def generate_scratch(
         file_num = 0
         for xml, mid in zip(xml_list, mid_list):
             file_num += 1
-            # xml_name =  os.path.basename(xml).split(".")[0]
-            # mid_name =  os.path.basename(mid).split(".")[0]
-            # assert xml_name == mid_name
             score = mid
 
             ## LOAD DATA ##
@@ -882,10 +868,10 @@ def generate_scratch(
 
             # inverse to feature
             vel, art, ioi = \
-                inverse_feature_note(sampled, art=True, numpy=False, interp='tanh')
+                inverse_feature(sampled, art=True, numpy=False, interp='tanh')
             features = [vel, art, ioi]
 
-            inverse_rendering_art_note(
+            rendering_from_notes(
                 input_notes=xml_notes, save_dir="./", cond=test_x, features=features, 
                 tempo=tempo, tempo_rate=tempo_rate,  same_onset_ind=same_onset_ind,  
                 savename=os.path.join(save_path, "test_sample.{}__mm{}-{}.{}.mid".format(

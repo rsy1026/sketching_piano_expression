@@ -3,10 +3,7 @@ import os
 import sys 
 sys.path.append('./parse_utils')
 from glob import glob
-import pretty_midi 
 import h5py
-import pandas as pd 
-from decimal import Decimal
 
 from parse_features import *
 from parse_utils import *
@@ -17,7 +14,6 @@ def ind2str(ind, n):
     rest = n - len(ind_)
     str_ind = rest*"0" + ind_
     return str_ind 
-
 
 def make_onset_based_pick(x_data, out, same_onset_ind=None):
     '''
@@ -33,7 +29,6 @@ def make_onset_based_pick(x_data, out, same_onset_ind=None):
         elif o == 1:
             continue
     return np.asarray(new_out)
-
 
 def make_onset_based_all(x_data, out, same_onset_ind=None):
     '''
@@ -52,41 +47,6 @@ def make_onset_based_all(x_data, out, same_onset_ind=None):
             is_onset.append(out[i])
     new_out.append(is_onset)
     return new_out
-
-
-def make_onset_based_all_index(x_data, out, same_onset_ind=None):
-    '''
-    get all notes in each onset
-    '''
-    start, end = same_onset_ind
-    same_onset = np.argmax(x_data[:,start:end], axis=-1)
-    new_out = list()
-    is_onset = [[0, out[0]]]
-    for i in range(1, x_data.shape[0]):
-        o = same_onset[i] 
-        if o == 0:
-            new_out.append(is_onset)
-            is_onset = [[i, out[i]]]
-        elif o == 1:
-            is_onset.append([i, out[i]])
-    new_out.append(is_onset)
-    return new_out
-
-
-def make_note_based(x_data, out, same_onset_ind=None):
-    start, end = same_onset_ind
-    same_onset = np.argmax(x_data[:,start:end], axis=-1)
-    new_out = list()
-    j = -1
-    for i in range(x_data.shape[0]):
-        o = same_onset[i] 
-        if o == 0:
-            j += 1
-            new_out.append(out[j])
-        elif o == 1:
-            new_out.append(out[j])
-    return np.asarray(new_out)
-
 
 def make_align_matrix(x_data, roll, same_onset_ind=None, rev=False):
     align_mat = np.zeros([x_data.shape[0], roll.shape[0]])
@@ -124,7 +84,6 @@ def make_align_matrix(x_data, roll, same_onset_ind=None, rev=False):
         align_mat = np.flip(align_mat, 0)    
     return align_mat.astype(np.float32)
 
-
 def make_notenum_onehot(m_data):
     '''
     shape = [note-num, onset-num]
@@ -139,7 +98,6 @@ def make_notenum_onehot(m_data):
 
     return notenum_onehot
 
-
 def get_vertical_position(x_data, same_onset_ind=None):
     v_pos = np.zeros([len(x_data), 11])
     start, end = same_onset_ind
@@ -152,7 +110,6 @@ def get_vertical_position(x_data, same_onset_ind=None):
             pos += 1 
             v_pos[i, pos] = 1
     return v_pos 
-
 
 def make_pianoroll_x(x_data, same_onset_ind=None):
     roll = np.zeros([88,len(x_data)])
@@ -174,7 +131,6 @@ def make_pianoroll_x(x_data, same_onset_ind=None):
     roll = np.transpose(roll[:,:j+1])
     return roll
 
-
 def note_to_onset_ind(inp, same_onset_ind):
     onset_ind = list()
     start, end = same_onset_ind
@@ -185,16 +141,13 @@ def note_to_onset_ind(inp, same_onset_ind):
     assert onset_ind[-1] == len(inp)
     return onset_ind
 
-
-def save_batches(same_onset_ind=[110,112]):
+def main(same_onset_ind=[110,112]):
     print("Saving batches...")
 
     parent_path = './data'
     groups = sorted(glob(os.path.join(parent_path, "train_samples"))) # train/val/test
     maxlen, hop = 16, 4
 
-    all_out = list()
-    all_in = list()
     all_batches = list()
     all_num = 0
     for group in groups: # train/val/test
@@ -237,9 +190,6 @@ def save_batches(same_onset_ind=[110,112]):
                     '''
                     cond = np.asarray([c[1] for c in cond_])
                     inp = np.asarray([i[1] for i in inp_])
-                    # t_aug = [0.9, 1, 1.1]
-                    # d_aug = [0.9, 1, 1.1]
-                    # a_aug = [0.9, 1, 1.1] 
                     t_aug = [1]
                     d_aug = [1]
 
@@ -247,36 +197,20 @@ def save_batches(same_onset_ind=[110,112]):
 
                     for t in t_aug: # augment tempo
                         for d in d_aug: # augment dynamics
-                            # t, d = 1, 1
                             in_batch = inp
                             out_batch = np.asarray([
                                 [o[1][0]*d, o[1][1]*t,
                                 o[1][2]*t, o[1][3]*t] for o in oup_]) # , o[1][4]*t
                                                         
-                            all_out.append(out_batch)
-                            # all_in.append(in_batch)
-
                             onset_ind = note_to_onset_ind(in_batch, same_onset_ind=same_onset_ind)
                             t_ind = ind2str(int(t*100), 3)
                             d_ind = ind2str(int(d*100), 3)
 
                             # save batch 
                             num = 1
-                            # for b in range(0, len(out_batch)-maxlen, hop): # note-based
                             for b in range(0, len(onset_ind)-maxlen, hop): # onset-based
                                 
                                 b_ind = ind2str(num, 4) 
-
-                                # note-based
-                                # minind, maxind = None, None
-                                # for k in range(b, b+maxlen+1):
-                                #     if k in onset_ind:
-                                #         minind = k
-                                #         break 
-                                # for j in reversed(range(b+maxlen+1)):
-                                #     if j in onset_ind:
-                                #         maxind = j
-                                #         break 
 
                                 # onset_based
                                 onset_in_range = onset_ind[b:b+maxlen+1]
@@ -291,7 +225,6 @@ def save_batches(same_onset_ind=[110,112]):
                                 if len(in2_) < 4:
                                     continue
                                 in3_ = make_align_matrix(in_, in2_, same_onset_ind=same_onset_ind) # note2chord
-                                # in3_rev = make_align_matrix(in_, in2_, rev=True, same_onset_ind=same_onset_ind)
                                 in4_ = make_notenum_onehot(in3_) # NumInChord
                                 in5_ = get_vertical_position(in_, same_onset_ind=same_onset_ind) # PositionInChord
 
@@ -313,7 +246,6 @@ def save_batches(same_onset_ind=[110,112]):
                                     c_name.lower(), p_name.lower(), pl_name, b_ind, t_ind, d_ind))  
 
                                 assert len(in_) == len(out_) == len(con_)
-                                # assert in3_.shape == in3_rev.shape
 
                                 np.save(savename_x, in_)
                                 np.save(savename_m, in3_)
@@ -325,7 +257,6 @@ def save_batches(same_onset_ind=[110,112]):
                                 num += 1
                         print("saved batches for {} {}: player {}".format(c_name, p_name, pl_name))
 
-
 def corrupt_to_onset(x, y, stat=np.mean, same_onset_ind=None):
     y_onset = make_onset_based_all(x, y, same_onset_ind=same_onset_ind)
     y_onset_ = list()
@@ -334,7 +265,6 @@ def corrupt_to_onset(x, y, stat=np.mean, same_onset_ind=None):
         _features = stat(each, axis=0)
         y_onset_.append(_features)
     return np.asarray(y_onset_)
-
 
 def create_h5_dataset(dataset=None, savepath=None): # save npy files into one hdf5 dataset
     batch_path = "./data/train_samples/batch"
