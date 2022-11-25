@@ -9,9 +9,6 @@ Clone this repository, and install the required packages:
 
 ```
 git clone https://github.com/rsy1026/sketching_piano_expression.git
-```
-
-```
 pip install -r requirements.txt
 ```
 
@@ -25,7 +22,7 @@ pip install -e .
 We should align three files to parse the features: score MusicXML, score MIDI and human performance MIDI. Raw data samples can be found in './scripts/data/data_samples/raw_samples'.
 
 ```
-python3 extract_features.py --xml [filename].musicxml --score [filename].mid --perform [filename].mid --measures [num1] [num2]
+python3 extract_features.py --xml [filename1].musicxml --score [filename2].mid --perform [filename3].mid --measures [num1] [num2]
 ```
 
 Please make sure that MusicXML data has no error: 
