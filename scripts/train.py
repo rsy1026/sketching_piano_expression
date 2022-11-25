@@ -114,7 +114,7 @@ def main():
     # attributes
     batch_size = 64
     total_epoch = 100
-    exp_num = 'xx' 
+    exp_num = '000' 
     checkpoint_num = '000'
     same_onset_ind = [110,112]
     max_norm = 1.
