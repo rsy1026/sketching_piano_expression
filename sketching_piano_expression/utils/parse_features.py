@@ -616,6 +616,18 @@ def parse_midi_features(
     input_list = np.array(input_list, dtype=object)
     output_list = np.array(output_list_, dtype=object)
 
+    # check the order of onsets
+    inp = np.asarray([i[1] for i in input_list])
+    base_onsets = pdata.make_onset_based_pick(
+        inp, np.asarray(base_onset_list), same_onset_ind=same_onset_ind)
+    mean_onsets = pdata.make_onset_based_pick(
+        inp, np.asarray(mean_onset_list), same_onset_ind=same_onset_ind)
+    next_onsets = pdata.make_onset_based_pick(
+        inp, np.asarray(next_onset_list), same_onset_ind=same_onset_ind)
+
+    assert np.array_equal(base_onsets[1:], mean_onsets[:-1])
+    assert np.array_equal(mean_onsets[1:], next_onsets[:-1])
+
     return input_list, output_list
 
 def parse_test_features_noY(
@@ -647,6 +659,8 @@ def parse_test_features_noY(
             if measure_num >= start_measure and measure_num <= end_measure:
                 pairs_score.append(note)
         pairs_score = sorted(pairs_score, key=lambda x: x['xml_note'][0])
+    else:
+        pairs_score = pairs_score_all
 
     # get first onsets
     pairs_score_onset = make_onset_pairs(pairs_score, fmt="xml")
@@ -776,7 +790,7 @@ def parse_test_features_noY(
     input_list = np.array(input_list, dtype=object)
     inp = np.asarray([i[1] for i in input_list])
 
-    # rearrange mean onsets
+    # check the order of onsets
     base_onsets = pdata.make_onset_based_pick(
         inp, np.asarray(base_onset_list), same_onset_ind=same_onset_ind)
     mean_onsets = pdata.make_onset_based_pick(
