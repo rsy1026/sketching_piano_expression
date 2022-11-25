@@ -16,7 +16,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import PolynomialFeatures
 
-from musicxml_parser import MusicXMLDocument
+from .musicxml_parser import MusicXMLDocument
 
 dc = getcontext()
 dc.prec = 48

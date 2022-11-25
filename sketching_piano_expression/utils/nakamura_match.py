@@ -3,7 +3,7 @@ from glob import glob
 import os 
 import shutil
 import numpy as np
-from parse_utils import extract_midi_notes
+from .parse_utils import extract_midi_notes
 
 def xml_score_match(xml, score):
     nakamura_c = './MusicXMLToMIDIAlign.sh'

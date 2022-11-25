@@ -7,9 +7,8 @@ import time
 import copy
 from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
 
-from match import XML_SCORE_PERFORM_MATCH as MATCH
-from parse_utils import *
-import make_batches as batch
+from .match import XML_SCORE_PERFORM_MATCH as MATCH
+from .parse_utils import *
 
 dc = getcontext()
 dc.prec = 48
@@ -94,8 +93,8 @@ def search(dirname):
             p_name = p.split('/')[-2] # get piece name
             players = sorted(glob(os.path.join(p, "*/"))) # player 3x) (Ballade No.1) player1
             # get each path of xml, score, performance files
-            xml_path = os.path.join(p, "musicxml_cleaned_plain.musicxml")
-            score_path = os.path.join(p, "score_plain.mid")
+            xml_path = os.path.join(p, "*.musicxml")
+            score_path = os.path.join(p, "*score*.mid")
             # assign paths to corresponding piece category
             if os.path.exists(xml_path) is True:
                 xml_list[c_name][p_name] = xml_path
@@ -103,8 +102,8 @@ def search(dirname):
                 perform_midi_list[c_name][p_name] = list()
                 for pl in players:
                     pl_name = pl.split('/')[-2]
-                    perform_path = glob(os.path.join(pl, '[!score_plain]*.mid'))
-                    perform_path += glob(os.path.join(pl, '[!score_plain]*.MID'))
+                    perform_path = glob(os.path.join(pl, '[!score]*.mid'))
+                    perform_path += glob(os.path.join(pl, '[!score]*.MID'))
                     perform_path = [p for p in perform_path if os.path.basename(p).split(".")[1] != "cleaned"]
                     perform_midi_list[c_name][p_name].append(perform_path[0])
     
@@ -112,11 +111,12 @@ def search(dirname):
 
 def save_matched_files(dirname):
     # parent directories
-    program_dir = './parse_data'
+    program_dir = os.getcwd()
     # get directory lists
     xml_list, score_midi_list, perform_midi_list = search(dirname)
-    match = MATCH(current_dir=os.getcwd(), 
-                  program_dir=program_dir)	
+    match_files = MATCH(
+        current_dir=os.getcwd(), 
+        program_dir=program_dir)	
     
     # start matching
     for categ in sorted(perform_midi_list): 
@@ -129,7 +129,13 @@ def save_matched_files(dirname):
             pair_path = os.path.join(
                 os.path.dirname(performs[0]), "xml_score_perform_pairs.npy")
             if os.path.exists(pair_path) is False:
-                _, _ = match(xml, score, performs, save_pairs=True, plot=True)	
+                '''
+                <examples>
+                xml = "~/data_samples/raw_samples/musicxml_cleaned_plain.musicxml"
+                score = "~/data_samples/raw_samples/score_plain.mid"
+                performs = ["~/data_samples/raw_samples/01/Na06.mid"]
+                '''
+                _, _ = match_files(xml, score, performs, save_pairs=True, plot=True)	
 
             print("saved pairs for {}:{}".format(categ, piece))
 

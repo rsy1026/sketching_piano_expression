@@ -2,9 +2,9 @@ import os
 import sys
 import numpy as np
 
-from musicxml_parser import MusicXMLDocument
-from parse_utils import *
-from nakamura_match import *
+from .musicxml_parser import MusicXMLDocument
+from .parse_utils import *
+from .nakamura_match import *
 
 '''
 * The current code includes several steps:
