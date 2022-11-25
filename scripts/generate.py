@@ -1,36 +1,29 @@
 import numpy as np
 import os
-import sys 
-sys.path.append("./parse_utils")
 import time
 from glob import glob
 import pretty_midi 
 from decimal import Decimal
 import copy
-import warnings
-import gc
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F 
 
-from make_batches import (
+from data.make_batches import (
     make_align_matrix, 
     corrupt_to_onset, 
     make_notenum_onehot,
     make_pianoroll_x, 
     get_vertical_position
 )
-from parse_utils import *
-from parse_features import (
+from sketching_piano_expression.utils.parse_utils import *
+from data.parse_features import (
     parse_test_cond, 
     parse_test_features, 
     parse_test_features_noY
 )
-import models.piano_model as model
-
+import model.piano_model as model
 
 
 def rendering_from_notes(
@@ -310,9 +303,10 @@ class GetData(object):
             first_measure = measures[0]
         tempo, time_sig, key_sig = get_signatures_from_xml(xml, first_measure)
         test_y, test_x, pairs, note_ind = \
-            parse_test_features(xml=xml, score=score, perform=perform,
-            mode="note", measures=measures, tempo=tempo, pair_path=pair_path,
-            null_tempo=self.null_tempo, same_onset_ind=self.soi)
+            parse_test_features(
+                xml=xml, score=score, perform=perform,
+                measures=measures, tempo=tempo, pair_path=pair_path,
+                null_tempo=self.null_tempo, same_onset_ind=self.soi)
         cond = parse_test_cond(pair=pairs, small_ver=False, 
             tempo=tempo, time_sig=time_sig, key_sig=key_sig) 
         xml_notes_raw = [p['xml_note'][1] for p in pairs]
@@ -338,7 +332,7 @@ class GetData(object):
 
         return test_x, test_y, test_m, pairs, xml_notes, perform_notes, tempo, p_name
 
-    def file2data_noY(self, files, measures, mode=None, save_mid=False):
+    def file2data_noY(self, files, measures, save_mid=False):
 
         xml, score = files
         p_name = '__'.join(score.split("/")[-3:-1])
@@ -350,9 +344,10 @@ class GetData(object):
             first_measure = measures[0]
         tempo, time_sig, key_sig = get_signatures_from_xml(xml, first_measure)
         test_x, pairs, note_ind = \
-            parse_test_features_noY(xml=xml, score=score,
-            mode=mode, measures=measures, tempo=tempo,
-            null_tempo=self.null_tempo, same_onset_ind=self.soi)
+            parse_test_features_noY(
+                xml=xml, score=score,
+                measures=measures, tempo=tempo,
+                null_tempo=self.null_tempo, same_onset_ind=self.soi)
         cond = parse_test_cond(pair=pairs, small_ver=False, 
             tempo=tempo, time_sig=time_sig, key_sig=key_sig) 
         xml_notes_raw = [p['xml_note'][1] for p in pairs]
@@ -398,23 +393,52 @@ class GetData(object):
         assert label >= 0 and label < 8
         label = np.array(label)
 
+        device_ = device if device is not None else "cpu"
         # convert to tensor
-        test_x_ = torch.from_numpy(test_x.astype(np.float32)).to(device).unsqueeze(0)
-        test_m_ = torch.from_numpy(test_m.astype(np.float32)).to(device).unsqueeze(0)
-        test_y_ = torch.from_numpy(y.astype(np.float32)).to(device).unsqueeze(0)
-        test_y2_ = torch.from_numpy(y2.astype(np.float32)).to(device).unsqueeze(0)
-        test_clab_ = torch.from_numpy(clab.astype(np.float32)).to(device).unsqueeze(0)
+        test_x_ = torch.from_numpy(test_x.astype(np.float32)).to(device_).unsqueeze(0)
+        test_m_ = torch.from_numpy(test_m.astype(np.float32)).to(device_).unsqueeze(0)
+        test_y_ = torch.from_numpy(y.astype(np.float32)).to(device_).unsqueeze(0)
+        test_y2_ = torch.from_numpy(y2.astype(np.float32)).to(device_).unsqueeze(0)
+        test_clab_ = torch.from_numpy(clab.astype(np.float32)).to(device_).unsqueeze(0)
         
         return test_x_, test_y_, test_y2_, test_m_, test_clab_
 
-    def data2input_noY(self, test_x, test_m, mode=None, device=None):
+    def data2input_noY(self, test_x, test_m, device=None):
 
+        device_ = device if device is not None else "cpu"
         # convert to tensor
-        test_x_ = torch.from_numpy(test_x.astype(np.float32)).to(device).unsqueeze(0)
-        test_m_ = torch.from_numpy(test_m.astype(np.float32)).to(device).unsqueeze(0)
+        test_x_ = torch.from_numpy(test_x.astype(np.float32)).to(device_).unsqueeze(0)
+        test_m_ = torch.from_numpy(test_m.astype(np.float32)).to(device_).unsqueeze(0)
 
         return test_x_, test_m_
 
+    def file2yfeature(self, files, measures, pair_path=None):
+
+        xml, score, perform = files
+        p_name = '__'.join(score.split("/")[-3:-1])
+
+        # parse data
+        if measures is None:
+            first_measure = 0 
+        else:
+            first_measure = measures[0]
+        tempo, time_sig, key_sig = get_signatures_from_xml(xml, first_measure)
+        # _, notes = parse_test_x_features(score=score, tempo=tempo)
+        test_y, test_x, pairs, note_ind = \
+            parse_test_features(
+                xml=xml, score=score, perform=perform,
+                measures=measures, tempo=tempo, pair_path=pair_path,
+                null_tempo=self.null_tempo, same_onset_ind=self.soi)
+
+        y_vel = test_y[:,0]
+        y_ioi = test_y[:,2]
+        y_art = np.power(10, np.log10(test_y[:,1]) - np.log10(test_y[:,3]))
+
+        y = np.stack([y_vel, y_art, y_ioi], axis=-1)
+        y2 = corrupt_to_onset(
+            test_x, y, stat=self.stat, same_onset_ind=self.soi)
+
+        return y.T, y2.T
 
 def test_model(
     song_name=None, measures=None, device_num=None,
