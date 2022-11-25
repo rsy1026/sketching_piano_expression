@@ -5,7 +5,7 @@ sys.path.append('~/utils')
 from glob import glob
 import h5py
 
-from .parse_features import *
+from parse_features import *
 from sketching_piano_expression.utils.parse_utils import *
 
 
@@ -103,11 +103,11 @@ def note_to_onset_ind(inp, same_onset_ind):
     assert onset_ind[-1] == len(inp)
     return onset_ind
 
-def main(same_onset_ind=[110,112]):
+def main(dirname, same_onset_ind=[110,112]):
     print("Saving batches...")
 
-    parent_path = './data_samples'
-    groups = sorted(glob(os.path.join(parent_path, "train_samples"))) # train/val/test
+    # dirname = './features'
+    groups = sorted(glob(os.path.join(dirname, "*/"))) # train/val/test
     maxlen, hop = 16, 4
 
     all_batches = list()
@@ -249,7 +249,16 @@ def create_h5_dataset(dataset=None, savepath=None): # save npy files into one hd
 
 
 if __name__ == "__main__":
-    split_sets()
-    save_batches()
+    import logging, sys, argparse
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logger = logging
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--input_dir', type=str, default='./scripts/data/data_samples/features',
+                        help='input directory (subdirectories are train/val/test)')
+
+    args = parser.parse_args()
+
+    main(dirname=args.input_dir)
 
 
