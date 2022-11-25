@@ -1,24 +1,9 @@
 import numpy as np
-import matplotlib
-matplotlib.use("agg")
-import matplotlib.pyplot as plt
-from matplotlib import gridspec
-import seaborn as sns
-import math
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import gc
-import sys 
-sys.path.append("./parse_utils")
 import time
 from glob import glob
-import pretty_midi 
 import h5py
-from decimal import Decimal, getcontext, ROUND_HALF_UP
-
-dc = getcontext()
-dc.prec = 6
-dc.rounding = ROUND_HALF_UP
 
 import torch
 import torch.nn as nn
@@ -29,18 +14,14 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from multiprocessing import Manager
-# from torch.multiprocessing import Pool, Process, set_start_method
-# try:
-#      set_start_method('spawn')
-# except RuntimeError:
-#     pass
 
 from model import PerformGenerator, Mask
-from make_batches \
-    import make_align_matrix, make_note_based, corrupt_to_onset
-from parse_utils.parse_utils \
-    import extract_midi_notes, save_new_midi, moving_average, \
-           make_midi_start_zero, make_pianoroll, ind2str, poly_predict
+from sketching_piano_expression.utils.make_batches import (
+    corrupt_to_onset
+)
+from sketching_piano_expression.utils.parse_utils import (
+    poly_predict
+)
 from generate import features_by_condition_note
 
 
@@ -132,7 +113,6 @@ def main():
 
     # attributes
     batch_size = 64
-    # batch_size_val = 16
     total_epoch = 100
     exp_num = 'xx' 
     checkpoint_num = '000'
@@ -363,7 +343,7 @@ def loss_fn(
     reg_loss = -torch.mean(reg_dist)
 
     # VAE ELBO
-    elbo = recon_loss - kld_c - kld_z + 100*disc_z + 1000*disc_c + 10*reg_loss
+    elbo = recon_loss - kld_c - kld_z + 1000*disc_c + 100*disc_z + 10*reg_loss
 
     # total loss
     total_loss = -elbo # negative to minimize

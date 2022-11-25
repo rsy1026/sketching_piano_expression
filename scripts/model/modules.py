@@ -5,9 +5,9 @@ from torch.autograd import Function
 from torch.nn.utils.rnn import pad_sequence
 
 from itertools import chain
-import numpy as np
 from scipy.stats import truncnorm
 import math
+import numpy as np
 
 
 ## FUNCTION BLOCKS ##
