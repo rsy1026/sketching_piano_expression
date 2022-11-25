@@ -10,6 +10,7 @@ Clone this repository, and install the required packages:
 '''
 git clone https://github.com/rsy1026/sketching_piano_expression.git
 '''
+
 '''
 pip install -r requirements.txt
 '''
@@ -26,3 +27,9 @@ We should align three files to parse the features: score MusicXML, score MIDI an
 '''
 python3 extract_features.py --xml [filename].musicxml --score [filename].mid --perform [filename].mid --measures [num1] [num2]
 '''
+
+Please make sure that MusicXML data has no error: 
+* Please check if any notes are *hidden* by some annotations (such as trills, glissandos, etc.) in the MusicXML score (You may check with the *MuseScore* software).
+* Trills should not be abbreviated as "tr." signs but all notes should appear within each trill.
+* Make sure that any complex techniques written in the MusicXML score are not abbreviated as annotations but every single notes should be written.
+* Functions to extract the features may be updated in the future for imperfectly aligned MusicXML-MIDI files. These functions may flexibly skip the unaligned notes.
