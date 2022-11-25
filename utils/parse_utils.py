@@ -1,19 +1,11 @@
-from musicxml_parser import MusicXMLDocument
-
 import os
-import sys
-sys.setrecursionlimit(100000)
 import numpy as np
-from glob import glob
-from fractions import Fraction
 import pretty_midi
 import csv
 import time
-import shutil
 from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
 import copy
 import mido
-import scipy.stats as stats
 
 import matplotlib
 matplotlib.use("agg")
@@ -24,106 +16,12 @@ from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import PolynomialFeatures
 
+from musicxml_parser import MusicXMLDocument
+
 dc = getcontext()
 dc.prec = 48
 dc.rounding = ROUND_HALF_UP
 
-
-def ind2str(ind, n):
-    ind_ = str(ind)
-    rest = n - len(ind_)
-    str_ind = rest*"0" + ind_
-    return str_ind 
-
-def remove_files():
-    # parent_path = '/home/rsy/Dropbox/RSY/Piano/data/chopin_maestro/original'
-    # parent_path = '/data/chopin_cleaned/original/Chopin_Nocturne'
-    parent_path = '/data/asap_dataset/exp_data/listening_test/raw'
-    # assert os.path.exists(parent_path)
-    # parent_path = '/data/chopin_cleaned/exp_data/test/raw/Chopin_Etude'
-    # parent_path = '/data/chopin_cleaned/original'
-    categs = sorted(glob(os.path.join(parent_path, '*/')))
-    all_files = list()
-    for c in categs:
-        # c = categs[3]
-        pieces = sorted(glob(os.path.join(c, '*/')))
-        for p in pieces:
-            # p = pieces[-1]
-            # p_name = p.split("/")[-2]
-            # if p_name.split('_')[0] not in ['10', '25']:
-            #     all_files += [p]
-
-            # c_name = "Mozart_Piano_Sonatas"
-            # p_name = "8-1"
-
-            # p = os.path.join(parent_path, c_name, p_name)
-            players = sorted(glob(os.path.join(p, '*/')))
-            npy_files = sorted(glob(os.path.join(p, '*.npy')))
-            # xml_files = sorted(glob(os.path.join(p, '*.musicxml')))
-            # mid_files = sorted(glob(os.path.join(p, '*.mid')))
-            all_files += npy_files
-            # for a in all_files:
-            #     os.remove(a)
-            for pl in players:
-                txt_files = sorted(glob(os.path.join(pl, '*.txt')))
-                npy_files = sorted(glob(os.path.join(pl, '*.npy')))
-                # npy_files = sorted(glob(os.path.join(pl, 'inp*.npy')))
-                # npy_files += sorted(glob(os.path.join(pl, 'oup*.npy')))
-                # xml_files = sorted(glob(os.path.join(pl, '*.xml')))
-                mid_files = sorted(glob(os.path.join(pl, '*.cleaned.mid')))
-                # mid_files += sorted(glob(os.path.join(pl, 'score_ref.mid')))
-                # all_files = sorted(glob(os.path.join(pl, '*.cleaned.cleaned_*')))
-                # all_files = txt_files + npy_files + xml_files + mid_files
-                all_files += txt_files + mid_files + npy_files
-                # all_files = mid_files + txt_files
-                # shutil.rmtree(pl[:-1])
-                
-    ## REMOVE ALL FILES ##
-    for a in all_files:
-        os.remove(a)
-
-
-def remove_midi_files():
-    # parent_path = '/home/rsy/Dropbox/RSY/Piano/data/chopin_maestro/original'
-    # parent_path = '/data/chopin_cleaned/original/Chopin_Nocturne'
-    # parent_path = '/data/asap_dataset/exp_data/listening_test/raw'
-    # assert os.path.exists(parent_path)
-    # parent_path = '/data/chopin_cleaned/exp_data/test/raw/Chopin_Etude'
-    parent_path = '/data/chopin_cleaned/original'
-    categs = sorted(glob(os.path.join(parent_path, '*/')))
-    for c in categs:
-        pieces = sorted(glob(os.path.join(c, '*/')))
-        for p in pieces:
-            # p = pieces[-1]
-
-            # c_name = "Mozart_Piano_Sonatas"
-            # p_name = "8-1"
-
-            # p = os.path.join(parent_path, c_name, p_name)
-            players = sorted(glob(os.path.join(p, '*/')))
-            # npy_files = sorted(glob(os.path.join(p, 'oup3.*.npy')))
-            # xml_files = sorted(glob(os.path.join(p, '*.musicxml')))
-            # mid_files = sorted(glob(os.path.join(p, '*.mid')))
-            # all_files = mid_files + xml_files
-            # for a in all_files:
-            #     os.remove(a)
-            for pl in players:
-                mid_files = sorted(glob(os.path.join(pl, '*.mid')))
-                MID_files = sorted(glob(os.path.join(pl, '*.MID')))
-
-                if len(MID_files) > 0 and len(mid_files) > 0:
-                    all_files = mid_files
-                else:
-                    all_files = []
-                    # all_files = mid_files + txt_files
-                for a in all_files:
-                    os.remove(a)
-
-# def moving_average(x, w):
-#     assert len(x.shape) == 1
-#     pad = w // 2
-#     x = np.concatenate([np.zeros_like(x[:pad]), x, np.zeros_like(x[:pad])], axis=0)
-#     return np.convolve(x, np.ones(w), 'valid') / w
 
 class GaussianFeatures(BaseEstimator, TransformerMixin):
     '''
@@ -149,6 +47,12 @@ class GaussianFeatures(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return self._gauss_basis(X[:, :, np.newaxis], self.centers_,
                                  self.width_, axis=1)
+
+def ind2str(ind, n):
+    ind_ = str(ind)
+    rest = n - len(ind_)
+    str_ind = rest*"0" + ind_
+    return str_ind 
 
 def pad_for_same_length(x1, x2):
     a = copy.deepcopy(x1)
@@ -193,7 +97,8 @@ def poly_predict(y, N):
 
     return yfit
 
-def moving_average(data, win_len=None, stat=np.mean, half=False):
+def moving_average(
+    data, win_len=None, stat=np.mean, half=False):
     '''
     data = [timestep, feature]
     '''
@@ -222,36 +127,6 @@ def moving_average(data, win_len=None, stat=np.mean, half=False):
 
     return np.asarray(new_data)
 
-def moving_mode(data, win_len=None, half=False):
-    '''
-    data = [timestep, feature]
-    '''
-    assert len(data.shape) == 2
-    new_data = list()
-
-    if half is False:
-        assert win_len % 2 == 1 
-        assert win_len > 1
-        unit = (win_len - 1) // 2
-    elif half is True:
-        unit = int(win_len - 1)
-
-    for i in range(len(data)):
-        if half is False:
-            minind = np.max([0, i-unit])
-            maxind = np.min([len(data), i+unit+1])
-        elif half is True:
-            minind = np.max([0, i-unit])
-            maxind = np.min([len(data), i+1])     
-        data_in_range = data[minind:maxind]       
-        
-        in_range = [d for d in data_in_range if d is not None]
-        assert len(in_range) > 0
-        mean_data = stats.mode(in_range, axis=0).mode.reshape(-1,)
-        new_data.append(mean_data)
-
-    return np.asarray(new_data)
-
 def quantize(x, unit=None):
     div = x // unit
     x_prev = unit * div
@@ -266,17 +141,13 @@ def quantize(x, unit=None):
         x_new = x_prev
     return float(x_new)
 
-def quantize_to_sample(value, unit):
-    quantized = quantize(np.round(value, 3), unit=unit)
-    sample = int(quantized // unit)
-    return sample
-
 def quantize_to_frame(value, unit):
     # for making pianoroll from MIDI 
     sample = int(round(Decimal(str(value / unit))))
     return sample
 
-def make_pianoroll(notes, start=None, maxlen=None, 
+def make_pianoroll(
+    notes, start=None, maxlen=None, 
     start_pitch=21, num_pitch=88,
     unit=None, front_buffer=0., back_buffer=0., cut_end=True):
     '''
@@ -307,10 +178,6 @@ def make_pianoroll(notes, start=None, maxlen=None,
             hand = 0
         elif n.pitch < 70: # left-hand(temporary)
             hand = 1
-        # onset = quantize_to_sample(
-        #     n.start - start + front_buffer, unit=unit)
-        # offset = quantize_to_sample(
-        #     n.end - start + front_buffer, unit=unit)
         dur_raw = n.end - n.start
         dur = quantize_to_frame(dur_raw, unit=unit) 
         onset = quantize_to_frame(
@@ -319,8 +186,7 @@ def make_pianoroll(notes, start=None, maxlen=None,
         vel = n.velocity
         onset_list.append([hand, onset])
         offset_list.append([hand, offset]) 
-
-        # if onset < maxlen:  
+ 
         assert onset < maxlen
         roll[pitch, onset:offset] = vel
         onset_roll[pitch, onset] = offset - onset
@@ -333,101 +199,7 @@ def make_pianoroll(notes, start=None, maxlen=None,
         pass
         
     return roll, onset_list, onset_roll
-
-def pianoroll_to_notes(roll, time_unit=0.125, 
-    scale_pitch=21, vel_from_roll=False, vel=64, onset=True):
-    '''
-    unit: time duration per frame
-    '''
-    if onset is True:
-        assert len(np.unique(roll)) > 2, "** Onset True but it's binary roll!"
-
-    unit = time_unit
-    
-    note_list = list()
-    note_dict = dict()
-    for d in range(roll.shape[1]):
-        note_dict[d] = [0,0] # [start, dur]
-    
-    # for processing the last frame
-    roll = np.concatenate([roll, np.zeros_like(roll[:1])], axis=0)
-
-    '''
-    0 0 -> no note
-    0 1 -> new start
-    1 0 -> wrap up prev note
-    n 0 -> wrap up prev note
-    1 1 -> sustain
-    n 1 -> sustain
-    0 n -> new start
-    1 n -> wrap up prev note + new start
-    n n -> wrap up prev note + new start
-    '''
-    for f, frame in enumerate(roll):
-        for p in range(len(frame)):
-            if frame[p] == 1:
-                if f == 0: # start 
-                    start = f * unit
-                    note_dict[p] = [start, 1]
-                elif f > 0: # middle
-                    prev_f = roll[f-1]
-                    if prev_f[p] == 0: # new start (0 1)
-                        note_dict[p] = [start, 1] 
-                        start = f * unit
-                    elif prev_f[p] >= 1: # sustain (1 1), (n 1)
-                        note_dict[p][1] += 1
-            
-            elif frame[p] > 1:
-                if f == 0: # start 
-                    start = f * unit
-                    note_dict[p] = [start, 1]
-                elif f > 0: # new start
-                    dur = note_dict[p][1]
-                    if dur > 0:
-                        # (1 n), (n n)
-                        start = note_dict[p][0]
-                        end = start + dur * unit 
-                        pitch = p + scale_pitch
-                        if vel_from_roll is False:
-                            vel = vel
-                        elif vel_from_roll is True:
-                            vel = frame[p]
-                        # new note
-                        midi_note = pretty_midi.containers.Note(
-                            velocity=vel, pitch=pitch, start=start, end=end) 
-                        note_list.append(midi_note)
-                    # initiate
-                    start = f * unit
-                    note_dict[p] = [start, 1]
-                    
-            elif frame[p] == 0:
-                if f == 0: # start
-                    pass 
-                elif f > 0: # middle
-                    prev_f = roll[f-1]
-                    if prev_f[p] == 0: # no note (0 0)
-                        pass 
-                    elif prev_f[p] >= 1: # note stop (n 0), (1 0)
-                        dur = note_dict[p][1]
-                        if dur > 0:
-                            start = note_dict[p][0]
-                            end = start + dur * unit
-                            pitch = p + scale_pitch
-                            if vel_from_roll is False:
-                                vel = vel
-                            elif vel_from_roll is True:
-                                vel = frame[p]
-                            # new note
-                            midi_note = pretty_midi.containers.Note(
-                                velocity=vel, pitch=pitch, start=start, end=end) 
-                            note_list.append(midi_note)
-                            note_dict[p][1] = 0 # init dur
-                        elif dur == 0:
-                            pass
-        
-    note_list = sorted(note_list, key=lambda x: x.start)
-    return note_list
-                                                    
+                                                
 def check_note_measure_pair(xml_notes, xml_measures):
     for n, m in zip(xml_notes, xml_measures):
         n_num = n.measure_number
@@ -557,12 +329,11 @@ def get_signatures_from_xml(xml_path, measure_start):
         if x['measure'].time_signature is not None:
             if prev_measure < x['note'].measure_number:
                 time_sig.append([x['note'].measure_number, x['measure'].time_signature])
-        
         # get key signature
         if x['measure'].key_signature is not None:
             if prev_measure < x['note'].measure_number:
                 key_sig.append([x['note'].measure_number, x['measure'].key_signature])
-                
+        
         # update prev measure number
         prev_measure = x['note'].measure_number
     
@@ -720,38 +491,6 @@ def remove_overlaps_midi(midi_notes):
     # print("__overlapped notes: {}".format(num))
     return cleaned_notes
 
-def check_overlapped_midi_notes():
-    # PARENT DIRECTORY
-    dirname = '/home/seungyeon/DATA/seungyeon_files/Piano/chopin_cleaned'
-    # get directory lists
-    _, score_midi_list = search(dirname)
-
-    for ci, category in enumerate(sorted(xml_list)): 
-        for pi, piece in enumerate(sorted(xml_list[category])):
-            score = score_midi_list[category][piece]
-            midi_obj = pretty_midi.PrettyMIDI(score)
-            new_obj = pretty_midi.PrettyMIDI()
-            new_inst = pretty_midi.Instrument(program=0)
-            # load midi
-            midi_notes = list()
-            for inst in midi_obj.instruments:
-                for note in inst.notes:
-                    midi_notes.append(note)
-                for cc in inst.control_changes:
-                    # move directly to new midi object
-                    new_inst.control_changes.append(cc)
-            # remove overlapped notes
-            midi_notes.sort(key=lambda x: x.start)
-            midi_notes_ = remove_overlaps_midi(midi_notes)
-            # # move cleaned notes to new midi object
-            # for note in midi_notes_:
-            #   new_inst.notes.append(note)     
-            # new_obj.instruments.append(new_inst)
-            # # save cleaned notes
-            # new_obj.write(score)
-            print("checked midi for {}: {} ({}/{})".format(
-                category, piece, len(midi_notes), len(midi_notes_)))
-
 def erase_track_prettyMIDI(filepath, erase_ind=None):
 
     midi_data = mido.MidiFile(filepath)
@@ -806,8 +545,8 @@ def erase_track_prettyMIDI(filepath, erase_ind=None):
 
     return PM
 
-
-def get_cleaned_midi(filepath, no_vel=None, no_pedal=None, erase_track=None):
+def get_cleaned_midi(
+    filepath, no_vel=None, no_pedal=None, erase_track=None):
     filename = os.path.basename(filepath).split('.')[0]
     if erase_track is not None:
         midi = erase_track_prettyMIDI(filepath, erase_ind=erase_track)
@@ -959,192 +698,6 @@ def extract_corresp(corresp, num_score, num_perform):
     # check whether corresp lines matches to number of MIDI notes
     check_corresp_notes(lines_, num_score, num_perform)
     return lines_
-
-def match_XML_to_scoreMIDI(xml_parsed, score_parsed):
-    # check which measures contains grace notes
-    grace_measures = [xml_['note'].measure_number 
-        for xml_ in xml_parsed if xml_['note'].is_grace_note == True]
-    grace_measures = set(grace_measures)
-    # check which onsets contains arpeggiate
-    arpeggiate_onsets = [xml_['note'].note_duration.time_position
-        for xml_ in xml_parsed 
-        if xml_['note'].note_notations.is_arpeggiate == True and \
-        xml_['note'].is_grace_note == False]
-    arpeggiate_onsets = set(arpeggiate_onsets)
-
-    pairs = list()
-    score_matched = list()
-    prev_measure_number = -1
-    prev_note_start = -1
-    for x, xml_ in enumerate(xml_parsed):
-
-        xml_note = xml_['note']
-        xml_measure = xml_['measure']
-        measure_number = xml_note.measure_number
-        xml_note_start = xml_note.note_duration.time_position
-        xml_pos = xml_note.x_position
-        pair = None
-        match = False
-
-        # update measure onset
-        '''
-        note in new measure should be later 
-        than last note in previous measure.
-        '''
-        if prev_measure_number < measure_number:
-            measure_onset = prev_note_start 
-
-        # get onset of the non-grace note in next measure
-        '''
-        to make sure messed-up onsets are not bigger 
-        than next measure onset at least
-        '''
-        next_measure = False
-        for xml__ in xml_parsed[x:]:
-            next_note = xml__['note'] 
-            if next_note.measure_number == measure_number+1 and \
-                next_note.is_grace_note == False:
-                next_measure = True
-                break
-        if next_measure is True:
-            next_measure_onset = \
-                next_note.note_duration.time_position
-        elif next_measure is False:
-            next_measure_onset = next_note.note_duration.time_position + \
-                next_note.note_duration.seconds
-
-        # search matched score note
-        for s, score_note in enumerate(score_parsed):
-
-            if xml_note.is_grace_note == False:
-
-                # check whether onset is in arpeggiate
-                # if arpeggiate, onsets are all delayed(messed up)
-                if xml_note_start in arpeggiate_onsets:
-                    if score_note.start >= xml_note_start and \
-                        score_note.start < next_measure_onset and \
-                        xml_note.pitch[1] == score_note.pitch:
-                        match = True
-                else:
-                    # check whether neighboring note is grace note
-                    if xml_note.measure_number in grace_measures:
-                        # find latest non-grace note
-                        if x == 0:
-                            if xml_note.pitch[1] == score_note.pitch:
-                                match = True 
-                        else:
-                            # for r in reversed(range(x)):
-                            #     if xml_pos != xml_parsed[r]['note'].x_position and \
-                            #         xml_parsed[r]['note'].is_grace_note == False and \
-                            #         pairs[r]['score_midi'] is not None:
-                            #         if pairs[r]['score_midi'][0] >= r:
-                            #             continue
-                            #         elif pairs[r]['score_midi'][0] < r:
-                            #             break 
-                                
-                            for r in reversed(range(x)):
-                                if xml_pos != xml_parsed[r]['note'].x_position and \
-                                    pairs[r]['score_midi'] is not None:
-                                    if xml_parsed[r]['note'].note_duration.time_position == 0: # if grace
-                                        continue
-                                    else: # only if not grace!
-                                        break   
-                            prev_onset = pairs[r]['score_midi'][1].start 
-
-                            # if np.abs(score_note.start - xml_note_start) < 1. and \
-                            if score_note.start >= np.max([measure_onset, prev_onset]) and \
-                                score_note.start < next_measure_onset and \
-                                xml_note.pitch[1] == score_note.pitch:
-                                match = True
-                    
-                    else: # straight forward comparison
-                        if np.abs(score_note.start - xml_note_start) < 1e-3 and \
-                            xml_note.pitch[1] == score_note.pitch:
-                            match = True
-
-            elif xml_note.is_grace_note == True:
-
-                if x == 0: # if first note
-                    if xml_note.pitch[1] == score_note.pitch:
-                        match = True 
-                else:
-                    '''
-                    * why not check arpeggiate?  
-                        - because grace note has obvious boundary:
-                          -> previous non-grace note
-                        - that is, grace note onset cannot be faster 
-                          than previous non-grace note. (in score midi)
-                        - therefore, whether arpeggiate or not doesn't matter.
-                          (arpeggiate score midi notes should start from xml_note_start)
-                    '''
-                    # find latest non-grace note
-                    # for r in reversed(range(x)):
-                    #     if xml_pos != xml_parsed[r]['note'].x_position and \
-                    #         xml_parsed[r]['note'].is_grace_note == False and \
-                    #         pairs[r]['score_midi'] is not None: # not in onset group
-                    #         if pairs[r]['score_midi'][0] >= r:
-                    #             continue
-                    #         elif pairs[r]['score_midi'][0] < r:
-                    #             break                             
-
-                    for r in reversed(range(x)):
-                        if xml_pos != xml_parsed[r]['note'].x_position and \
-                            pairs[r]['score_midi'] is not None:
-                            if xml_parsed[r]['note'].note_duration.time_position == 0: # if grace
-                                continue
-                            else: # only if not grace!
-                                if r > 0:
-                                    if xml_parsed[r]['note'].note_duration.time_position > \
-                                        xml_parsed[r-1]['note'].note_duration.time_position:
-                                        break # stop at note in new onset
-                                elif r == 0:
-                                    break
-
-                    prev_onset = pairs[r]['score_midi'][1].start 
-
-                    if score_note.start >= np.max([measure_onset, prev_onset]) and \
-                        score_note.start < next_measure_onset and \
-                        xml_note.pitch[1] == score_note.pitch:
-                        match = True                      
-
-            if match is True and s not in score_matched:
-                break
-            else:
-                match = False
-                continue
-
-        # update pair list
-        if match is True:
-            pair = {'xml_note': [x, xml_note], 
-                    'xml_measure': xml_measure, 
-                    'score_midi': [s, score_note]}
-            score_matched.append(s)
-
-        elif match is False:
-            pair = {'xml_note': [x, xml_note], 
-                    'xml_measure': xml_measure, 
-                    'score_midi': None}
-
-        pairs.append(pair)    
-        print("matched {}th xml note: matched: {} ".format(x, match), end='\r')
-        
-        # update prev attributes
-        prev_measure_number = xml_note.measure_number
-        if xml_note.is_grace_note is False: 
-            prev_note_start = xml_note_start
-
-    # assert xml and score is paired without disregarded notes
-    assert len(xml_parsed) == len(pairs)
-
-    # append pair with only score midi
-    for i, note in enumerate(score_parsed):
-        if i not in score_matched:
-            pair = {'xml_note': None, 
-                    'xml_measure': None, 
-                    'score_midi': [i, note]}
-            pairs.append(pair)
-
-    return pairs            
 
 def match_XML_to_scoreMIDI_plain(xml_parsed, score_parsed):
 
@@ -1388,29 +941,21 @@ def reorder_pairs(pairs):
         if pair['perform_midi'] is not None:
             ind = pair['perform_midi'][0]
             if prev_ind > ind:
-                # print(prev_ind, ind)
-                # print(pair['perform_midi'])
                 # find None with the same pitch
                 for j in reversed(range(i)):
                     if new_pairs[j]['perform_midi'] is None and \
                         new_pairs[j]['xml_note'][1].pitch[1] == pair['perform_midi'][1].pitch:
-                        # print("change pair:")
-                        # print(new_pairs[j])
                         # find more prev pair to check index order
                         prev_pair = None
                         for k in reversed(range(j)):
                             if new_pairs[k]['perform_midi'] is not None:
                                 prev_pair = new_pairs[k]
-                                # print("prev pair")
-                                # print(new_pairs[k])
                                 break 
                         # find next pair to check index order
                         next_pair = None
                         for h in range(j+1, len(new_pairs)):
                             if new_pairs[h]['perform_midi'] is not None:
                                 next_pair = new_pairs[h]
-                                # print("next pair")
-                                # print(new_pairs[h])
                                 break
                         
                         if prev_pair is not None and next_pair is not None:
@@ -1418,8 +963,6 @@ def reorder_pairs(pairs):
                                 next_pair['perform_midi'][0] > ind: # check both
                                 new_pairs[j]['perform_midi'] = pair['perform_midi']
                                 pair['perform_midi'] = None
-                                # print(new_pairs[j])
-                                # print(pair)
                         elif prev_pair is None and next_pair is not None:
                             if next_pair['perform_midi'][0] > ind: # check next ind
                                 new_pairs[j]['perform_midi'] = pair['perform_midi']
@@ -1437,15 +980,6 @@ def reorder_pairs(pairs):
     
     return new_pairs
         
-def distance_matrix(a, b):
-    '''
-    Use euclidean distance
-    '''
-    a_expand = np.tile(np.expand_dims(a, -1), [1, len(b)])
-    b_expand = np.tile(np.expand_dims(b, 0), [len(a), 1])
-    dm = np.sqrt(np.square(a_expand - b_expand))
-    return dm
-
 def match_score_to_performMIDI(
     xml_score_pairs, corresp_parsed, perform_parsed, 
     score_parsed, xml_parsed):
@@ -1491,61 +1025,9 @@ def match_score_to_performMIDI(
         assert len(only_perform) == len(perform_parsed)
     return new_pairs
 
-def group_by_onset(pairs):
-    onset_list = list()
-    same_onset = list()
-    prev_onset = None
-    for note in pairs:
-        onset = note['score_midi'][1].start
-        if prev_onset is None:
-            same_onset = [note]
-        else:
-            if onset > prev_onset:
-                onset_list.append(same_onset)
-                same_onset = [note]
-            elif onset == prev_onset:
-                same_onset.append(note)
-        prev_onset = onset
-    onset_list.append(same_onset)
-    return onset_list
-
-def group_by_measure(pairs):
-    measure_groups = dict()
-    pairs_ = [p for p in pairs if p['xml_note'] is not None]
-    pairs_ = sorted(pairs_, key=lambda x: x['xml_note'][0])
-    prev_measure = pairs_[0]['xml_note'][1].measure_number
-    in_measure = [pairs_[0]]
-    for pair in pairs_[1:]:
-        measure = pair['xml_note'][1].measure_number
-        if prev_measure < measure:
-            measure_groups[prev_measure] = in_measure
-            in_measure = [pair]
-        elif prev_measure == measure:
-            in_measure.append(pair)
-        prev_measure = measure 
-    measure_groups[prev_measure] = in_measure
-    return measure_groups
-
-def get_measure_marker(pairs):
-    first_measure_num = pairs[0]['xml_note'][1].measure_number + 1
-    prev_measure_num = first_measure_num
-    marker = dict()
-
-    marker[first_measure_num] = [pairs[0]]
-    for each_note in pairs[1:]:
-        xml = each_note['xml_note'][1]
-        measure_num = xml.measure_number + 1
-
-        if prev_measure_num == measure_num: # if in same measure
-            marker[prev_measure_num].append(each_note)                  
-        elif prev_measure_num < measure_num: # if next measure
-            marker[measure_num] = [each_note]
-
-        prev_measure_num = measure_num
-
-    return marker
-
-def save_new_midi(notes, ccs=None, new_midi_path=None, initial_tempo=120, program=0, start_zero=False):
+def save_new_midi(
+    notes, ccs=None, new_midi_path=None, 
+    initial_tempo=120, program=0, start_zero=False):
     new_obj = pretty_midi.PrettyMIDI(resolution=10000, initial_tempo=initial_tempo)
     new_inst = pretty_midi.Instrument(program=program)
     if start_zero is True:
@@ -1570,119 +1052,6 @@ def make_midi_start_zero(notes):
                                                end=new_offset)  
         new_notes.append(new_note)
     return new_notes    
-
-def save_changed_midi(
-    notes, savename=None, save=True, change_tempo=None, change_art=None, change_dynamics=None):
-    # load midi notes
-    # notes, _ = extract_midi_notes(filepath, clean=False)
-    t_ratio = change_tempo
-    d_ratio = change_dynamics
-    a_ratio = change_art
-    # change condition
-    prev_note = None
-    prev_new_note = None
-    new_notes = list()
-    for note in notes:
-        new_onset = note.start 
-        new_offset = note.end 
-        new_vel = note.velocity
-        if change_tempo is not None:
-            dur = note.end - note.start
-            new_dur = dur * t_ratio
-            new_dur = np.max([new_dur, 0.025])
-            if prev_note is None: # first note
-                ioi, new_ioi = None, None
-                new_onset = note.start
-                new_offset = note.start + new_dur
-            elif prev_note is not None:
-                ioi = note.start - prev_note.start
-                new_ioi = ioi * t_ratio 
-                new_onset = prev_new_note.start + new_ioi 
-                new_offset = new_onset + new_dur 
-        if change_dynamics is not None:
-            vel = note.velocity
-            new_vel = int(np.round(vel * d_ratio)) 
-            new_vel = np.clip(new_vel, 0, 127)
-        # update new note
-        new_note = pretty_midi.containers.Note(velocity=new_vel,
-                                               pitch=note.pitch,
-                                               start=new_onset,
-                                               end=new_offset)  
-        new_notes.append(new_note)
-        prev_note = note
-        prev_new_note = new_note
-
-    # new midi
-    midi_new = pretty_midi.PrettyMIDI(resolution=10000, initial_tempo=120) # new midi object
-    inst_new = pretty_midi.Instrument(0) # new instrument object
-    inst_new.notes = make_midi_start_zero(new_notes)            
-    # append new instrument
-    midi_new.instruments.append(inst_new)
-    midi_new.remove_invalid_notes()
-    
-    if save is True:
-        midi_new.write(savename)
-    
-    return inst_new.notes
-
-def fade_in_out(
-    wav, fade_in_len=None, fade_out_len=None):
-    # wav is stereo
-    new_wav = np.copy(wav)
-    factor = 0
-    # fade in
-    if fade_in_len is not None:
-        for ind, sample in enumerate(new_wav):
-            if ind <= fade_in_len:
-                left = sample[0] * factor
-                right = sample[1] * factor
-                factor = (np.exp(ind*1e-3)-1)/(np.exp(fade_in_len*1e-3)-1)
-                new_wav[ind,:] = [left, right]
-            else:
-                break
-    # fade out
-    factor = 0
-    for ind, sample in enumerate(reversed(new_wav)):
-        if ind <= fade_out_len:
-            left = sample[0] * factor
-            right = sample[1] * factor
-            factor = (np.exp(ind*1e-3)-1)/(np.exp(fade_out_len*1e-3)-1)
-            new_wav[-(ind+1),:] = [left, right]
-        else:
-            break
-    return new_wav
-
-def trim_length(midi_notes, sec=None):
-    onset_group = list()
-    same_onset = [midi_notes[0]]
-    prev = -1
-    for note in midi_notes[1:]:
-        if note.start > prev:
-            onset_group.append(same_onset)
-            same_onset = [note]
-        elif note.start == prev:
-            same_onset.append(note)
-        prev = note.start
-    onset_group.append(same_onset)
-    # trim to given seconds long
-    sub_notes = list()
-    for onset in onset_group:
-        if onset[0].start < sec:
-            for note in onset:
-                sub_notes.append(note)
-        else:
-            break
-    return sub_notes
-
-def trim_length_pairs(pairs, sec=None):
-    onset_pairs = group_by_onset(pairs)
-    for onset in onset_pairs:
-        all_offsets = [n["score_midi"][1].end for n in onset]
-        max_offset = np.max(all_offsets)
-        if max_offset > sec:
-            break 
-    min_ind = np.min([n["score_midi"][0] for n in onset])
-    return min_ind
 
 def xml_to_midi_notes(xml_note):
     # xml_note object to MIDI notes
@@ -1710,27 +1079,9 @@ def save_xml_to_midi(xml_path, save_path):
     # extract all xml notes 
     xml_parsed = extract_xml_notes(XMLDocument) 
     xml_notes = [x['note'] for x in xml_parsed] 
-    # tempo, time_sig = get_tempo_from_xml(xml, measure_start=0) 
     # xml to midi notes
     midi_notes = xml_to_midi_notes(xml_notes)
     save_new_midi(midi_notes, new_midi_path=save_path, start_zero=False)
-
-def change_tempo_to_target(midi_from, midi_to):
-    midi_from = sorted(midi_from, key=lambda x: x.start)
-    midi_to = sorted(midi_to, key=lambda x: x.start)
-
-    max_len = np.max([n.end for n in midi_to])
-    cur_len = np.max([n.end for n in midi_from])
-    t_ratio = max_len / cur_len 
-
-    # mean_vel = np.mean([n.velocity for n in midi_to])
-    # cur_vel = np.mean([n.velocity for n in midi_from])
-    # d_ratio = mean_vel / cur_vel 
-
-    new_notes = save_changed_midi(
-        midi_from, savename=None, save=False, change_tempo=t_ratio)
-
-    return new_notes 
 
 def sort_pair(pairs, fmt=None):
     if fmt == "xml":
@@ -1787,93 +1138,4 @@ def make_onset_pairs(pairs, fmt=None):
 
     return onset_list
 
-def make_onset_list_pick(same_onset, out):
-    '''
-    get only the lowest note for each onset
-    '''
-    new_out = list()
-    for i in range(len(out)):
-        o = same_onset[i] 
-        if o == 0:
-            new_out.append(out[i])
-        elif o == 1:
-            continue
-    return np.asarray(new_out)
 
-def make_onset_list_all(same_onset, out):
-    '''
-    get all notes in each onset
-    '''
-    new_out = list()
-    is_onset = [out[0]]
-    for i in range(1, len(out)):
-        o = same_onset[i] 
-        if o == 0:
-            new_out.append(is_onset)
-            is_onset = [out[i]]
-        elif o == 1:
-            is_onset.append(out[i])
-    new_out.append(is_onset)
-    return new_out
-
-def make_note_list(same_onset, out):
-    new_out = list()
-    j = -1
-    for i in range(len(out)):
-        o = same_onset[i] 
-        if o == 0:
-            j += 1
-            new_out.append(out[j])
-        elif o == 1:
-            new_out.append(out[j])
-    return np.asarray(new_out)
-
-def save_stacked_midi():
-    parent_path = "/home/seungyeon/Piano/sarah/recording_data/"
-    dirname = "sarah_tone_data"
-    save_path = os.path.join(parent_path, "{}_tone_stacked".format(dirname))
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    mids = sorted(glob(os.path.join(parent_path, dirname, "*/"))) 
-    # pieces = sorted(np.unique([os.path.basename(m).split(".")[0].split('_')[0] for m in mids]))
-    big_pieces = sorted(np.unique([m.split("/")[-2][0] for m in mids]))
-    piece_interval = dict()
-    for big_piece in big_pieces:
-        pieces = sorted(glob(os.path.join(parent_path, 
-            dirname, "{}*/".format(big_piece)))) 
-        p_mids = list()
-        for piece in pieces:
-            p_mids_ = sorted(glob(os.path.join(piece, "*.mid"))) 
-            p_mids += p_mids_
-        p_mids = sorted(p_mids)
-        # get maximum length of each midi
-        mid_len_all = list()
-        for mid in p_mids:
-            # notes, _ = extract_midi_notes(mid, clean=False)
-            obj = pretty_midi.PrettyMIDI(mid)
-            notes = obj.instruments[0].notes
-            mid_len = notes[-1].end - notes[0].start
-            mid_len_all.append(mid_len)
-        max_len = int(np.ceil(np.max(mid_len_all)) + 8)
-        piece_interval[big_piece] = max_len
-        # stack midi every max_len
-        all_notes = list()
-        all_ccs = list()
-        ccs = list()
-        for n, mid in enumerate(p_mids):
-            # notes, ccs = extract_midi_notes(mid, clean=False, no_pedal=False)
-            obj = pretty_midi.PrettyMIDI(mid)
-            notes = obj.instruments[0].notes
-            # assert notes[0].start == 0.
-            for note in notes:
-                note.start += n*max_len 
-                note.end += n*max_len
-            for cc in ccs:
-                cc.time += n*max_len
-            all_notes += notes
-            all_ccs += ccs
-        # save new midi
-        new_midi_path = os.path.join(save_path, "{}_all.mid".format(big_piece))
-        save_new_midi(all_notes, ccs=all_ccs, new_midi_path=new_midi_path) 
-        print("saved stacked midi for {}".format(big_piece))
-    np.save(os.path.join(parent_path, "piece_interval_{}.npy".format(big_piece)), piece_interval) 

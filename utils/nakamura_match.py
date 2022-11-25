@@ -1,11 +1,7 @@
-from __future__ import division
-import csv
-import math
 import subprocess
 from glob import glob
 import os 
 import shutil
-import pretty_midi
 import numpy as np
 from parse_utils import extract_midi_notes
 
