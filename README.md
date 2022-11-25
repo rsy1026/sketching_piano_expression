@@ -24,7 +24,7 @@ We should align three files to parse the features: score MusicXML, score MIDI an
 Please make sure that MusicXML data has no error: 
 * Please check if any notes are *hidden* by some annotations (such as trills, glissandos, etc.) in the MusicXML score (You may check with the *MuseScore* software).
 * Trills should not be abbreviated as "tr." signs but all notes should appear within each trill.
-* Make sure that any complex techniques written in the MusicXML score are not abbreviated as annotations but every single notes should be written.
+* Make sure that any complex techniques are not abbreviated as annotations but every single note should be written in the MusicXML score.
 * Functions to extract the features may be updated in the future for imperfectly aligned MusicXML-MIDI files. These functions may flexibly skip the unaligned notes.
 
 
