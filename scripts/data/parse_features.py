@@ -653,11 +653,11 @@ def parse_midi_features(
     oup = np.asarray([o[1][0] for o in output_list])
 
     # rearrange mean onsets
-    base_onsets = batch.make_onset_based_pick(
+    base_onsets = make_onset_based_pick(
         inp, np.asarray(base_onset_perform_list), same_onset_ind=same_onset_ind)
-    mean_onsets = batch.make_onset_based_pick(
+    mean_onsets = make_onset_based_pick(
         inp, np.asarray(mean_onset_perform_list), same_onset_ind=same_onset_ind)
-    next_onsets = batch.make_onset_based_pick(
+    next_onsets = make_onset_based_pick(
         inp, np.asarray(next_onset_perform_list), same_onset_ind=same_onset_ind)
 
     assert np.array_equal(base_onsets[1:], mean_onsets[:-1])
