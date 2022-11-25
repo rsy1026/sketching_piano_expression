@@ -1,0 +1,8 @@
+numpy==1.22.2
+pretty_midi==0.2.9
+setuptools==59.5.0
+torch==1.11.0
+miditoolkit==0.1.16
+matplotlib==3.6.0
+chorder==0.1.4
+h5py==3.7.0

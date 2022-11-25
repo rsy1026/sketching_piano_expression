@@ -1,0 +1,10 @@
+tmp
+logs
+__pycache__
+.ipynb_checkpoints
+.*.swp
+*.egg-info
+
+build
+*.c
+*.so
