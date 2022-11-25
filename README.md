@@ -21,12 +21,24 @@ pip install -e .
 ## Parsing features for training
 We should align three files to parse the features: score MusicXML, score MIDI and human performance MIDI. Raw data samples can be found in './scripts/data/data_samples/raw_samples'.
 
-```
-python3 extract_features.py --xml [filename1].musicxml --score [filename2].mid --perform [filename3].mid --measures [num1] [num2]
-```
-
 Please make sure that MusicXML data has no error: 
 * Please check if any notes are *hidden* by some annotations (such as trills, glissandos, etc.) in the MusicXML score (You may check with the *MuseScore* software).
 * Trills should not be abbreviated as "tr." signs but all notes should appear within each trill.
 * Make sure that any complex techniques written in the MusicXML score are not abbreviated as annotations but every single notes should be written.
 * Functions to extract the features may be updated in the future for imperfectly aligned MusicXML-MIDI files. These functions may flexibly skip the unaligned notes.
+
+
+### Parsing a single set of file
+
+```
+python3 extract_features.py --xml [filename1].musicxml --score [filename2].mid --perform [filename3].mid --measures [num1] [num2]
+```
+
+### Saving batches
+
+```
+python3 make_batches.py --input_dir [dirname]
+```
+
+
+
