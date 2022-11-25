@@ -1,19 +1,13 @@
 import os
-import sys
-sys.setrecursionlimit(100000)
-sys.path.append('./parse_utils')
 import numpy as np
 from glob import glob
 from pretty_midi import Note
 import csv
 import time
 import copy
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
 
-from main import XML_SCORE_PERFORM_MATCH as MATCH
+from match import XML_SCORE_PERFORM_MATCH as MATCH
 from parse_utils import *
 import make_batches as batch
 
@@ -615,20 +609,6 @@ def parse_midi_features(
     # to numpy array
     input_list = np.array(input_list, dtype=object)
     output_list = np.array(output_list_, dtype=object)
-
-    inp = np.asarray([i[1] for i in input_list])
-    oup = np.asarray([o[1][0] for o in output_list])
-
-    # rearrange mean onsets
-    base_onsets = batch.make_onset_based_pick(
-        inp, np.asarray(base_onset_perform_list), same_onset_ind=same_onset_ind)
-    mean_onsets = batch.make_onset_based_pick(
-        inp, np.asarray(mean_onset_perform_list), same_onset_ind=same_onset_ind)
-    next_onsets = batch.make_onset_based_pick(
-        inp, np.asarray(next_onset_perform_list), same_onset_ind=same_onset_ind)
-
-    assert np.array_equal(base_onsets[1:], mean_onsets[:-1])
-    assert np.array_equal(mean_onsets[1:], next_onsets[:-1])
 
     return input_list, output_list
 
