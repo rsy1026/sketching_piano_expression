@@ -1,12 +1,12 @@
 import numpy as np
 import os
 import sys 
-sys.path.append('./parse_utils')
+sys.path.append('~/utils')
 from glob import glob
 import h5py
 
-from parse_features import *
-from parse_utils import *
+from sketching_piano_expression.utils.parse_features import *
+from sketching_piano_expression.utils.parse_utils import *
 
 
 def ind2str(ind, n):
@@ -144,7 +144,7 @@ def note_to_onset_ind(inp, same_onset_ind):
 def main(same_onset_ind=[110,112]):
     print("Saving batches...")
 
-    parent_path = './data'
+    parent_path = './data_samples'
     groups = sorted(glob(os.path.join(parent_path, "train_samples"))) # train/val/test
     maxlen, hop = 16, 4
 
@@ -232,8 +232,6 @@ def main(same_onset_ind=[110,112]):
                                 assert in2_.shape[0] == in3_.shape[1]
 
                                 in_ = np.concatenate([in_, in4_, in5_], axis=-1)
-
-                                all_batches.append(np.max(np.argmax(in4_, axis=-1)))
 
                                 # save batch
                                 savename_x = os.path.join(savepath, '{}.{}.{}.batch_x.{}.t{}_d{}.npy'.format(
