@@ -7,13 +7,46 @@ import time
 import copy
 from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
 
-from .match import XML_SCORE_PERFORM_MATCH as MATCH
-from .parse_utils import *
+from sketching_piano_expression.utils.match import XML_SCORE_PERFORM_MATCH as MATCH
+from sketching_piano_expression.utils.parse_utils import *
 
 dc = getcontext()
 dc.prec = 48
 dc.rounding = ROUND_HALF_UP
 
+
+def make_onset_based_all(x_data, out, same_onset_ind=None):
+    '''
+    get all notes in each onset
+    '''
+    start, end = same_onset_ind
+    same_onset = np.argmax(x_data[:,start:end], axis=-1)
+    new_out = list()
+    is_onset = [out[0]]
+    for i in range(1, x_data.shape[0]):
+        o = same_onset[i] 
+        if o == 0:
+            new_out.append(is_onset)
+            is_onset = [out[i]]
+        elif o == 1:
+            is_onset.append(out[i])
+    new_out.append(is_onset)
+    return new_out
+
+def make_onset_based_pick(x_data, out, same_onset_ind=None):
+    '''
+    get only the lowest note for each onset
+    '''
+    start, end = same_onset_ind
+    same_onset = np.argmax(x_data[:,start:end], axis=-1)
+    new_out = list()
+    for i in range(x_data.shape[0]):
+        o = same_onset[i] 
+        if o == 0:
+            new_out.append(out[i])
+        elif o == 1:
+            continue
+    return np.asarray(new_out)
 
 def crawl_yamaha_chopin():
     '''
@@ -616,14 +649,16 @@ def parse_midi_features(
     input_list = np.array(input_list, dtype=object)
     output_list = np.array(output_list_, dtype=object)
 
-    # check the order of onsets
     inp = np.asarray([i[1] for i in input_list])
-    base_onsets = pdata.make_onset_based_pick(
-        inp, np.asarray(base_onset_list), same_onset_ind=same_onset_ind)
-    mean_onsets = pdata.make_onset_based_pick(
-        inp, np.asarray(mean_onset_list), same_onset_ind=same_onset_ind)
-    next_onsets = pdata.make_onset_based_pick(
-        inp, np.asarray(next_onset_list), same_onset_ind=same_onset_ind)
+    oup = np.asarray([o[1][0] for o in output_list])
+
+    # rearrange mean onsets
+    base_onsets = batch.make_onset_based_pick(
+        inp, np.asarray(base_onset_perform_list), same_onset_ind=same_onset_ind)
+    mean_onsets = batch.make_onset_based_pick(
+        inp, np.asarray(mean_onset_perform_list), same_onset_ind=same_onset_ind)
+    next_onsets = batch.make_onset_based_pick(
+        inp, np.asarray(next_onset_perform_list), same_onset_ind=same_onset_ind)
 
     assert np.array_equal(base_onsets[1:], mean_onsets[:-1])
     assert np.array_equal(mean_onsets[1:], next_onsets[:-1])
@@ -791,11 +826,11 @@ def parse_test_features_noY(
     inp = np.asarray([i[1] for i in input_list])
 
     # check the order of onsets
-    base_onsets = pdata.make_onset_based_pick(
+    base_onsets = make_onset_based_pick(
         inp, np.asarray(base_onset_list), same_onset_ind=same_onset_ind)
-    mean_onsets = pdata.make_onset_based_pick(
+    mean_onsets = make_onset_based_pick(
         inp, np.asarray(mean_onset_list), same_onset_ind=same_onset_ind)
-    next_onsets = pdata.make_onset_based_pick(
+    next_onsets = make_onset_based_pick(
         inp, np.asarray(next_onset_list), same_onset_ind=same_onset_ind)
 
     assert np.array_equal(base_onsets[1:], mean_onsets[:-1])
