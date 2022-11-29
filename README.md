@@ -12,14 +12,14 @@ git clone https://github.com/rsy1026/sketching_piano_expression.git
 pip install -r requirements.txt
 ```
 
-Then run this command to make "sketching_piano_expression" a python package for importing inner functions easily:
+Then run this command to make `sketching_piano_expression` a python package for importing inner functions easily:
 
 ```
 pip install -e .
 ```
 
 ## Parsing features for training
-We should align three files to parse the features: score MusicXML, score MIDI and human performance MIDI. Raw data samples can be found in './scripts/data/data_samples/raw_samples'.
+We should align three files to parse the features: score MusicXML, score MIDI and human performance MIDI. Raw data samples can be found in `./scripts/data/data_samples/raw_samples`.
 
 Please make sure that MusicXML data has no error: 
 * Please check if any notes are *hidden* by some annotations (such as trills, glissandos, etc.) in the MusicXML score (You may check with the *MuseScore* software).
@@ -41,7 +41,12 @@ Enter to 'scripts' directory, and run the following command:
 ```
 python3 ./data/make_batches.py --input_dir ./data/data_samples/features
 ```
-You can make h5 files using create_h5_datasets(dataset=[train/val/test], savepath=[dirname]) function in 'make_batches.py'
+
+You can make h5 files using the following function in `make_batches.py`:
+
+```
+create_h5_datasets(dataset='train', savepath='./data/data_samples')
+```
 
 ### Training 
 
