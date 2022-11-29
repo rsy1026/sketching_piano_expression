@@ -36,14 +36,19 @@ python3 extract_features.py --xml [filename1].musicxml --score [filename2].mid -
 
 ### Saving batches
 
+Enter to 'scripts' directory, and run the following command:
+
 ```
-python3 ./data/make_batches.py --input_dir [dirname]
+python3 ./data/make_batches.py --input_dir ./data/data_samples/features
 ```
 You can make h5 files using create_h5_datasets(dataset=[train/val/test], savepath=[dirname]) function in 'make_batches.py'
 
 ### Training 
 
-```
+Simply run the following command:
 
 ```
+python3 train.py
+```
 
+You may change any settings within the code.
