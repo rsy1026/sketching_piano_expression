@@ -226,8 +226,8 @@ def corrupt_to_onset(x, y, stat=np.mean, same_onset_ind=None):
         y_onset_.append(_features)
     return np.asarray(y_onset_)
 
-def create_h5_dataset(dataset=None, savepath=None): # save npy files into one hdf5 dataset
-    batch_path = "./data/train_samples/batch"
+def create_h5_dataset(dataset='train', savepath='./data/data_samples'): # save npy files into one hdf5 dataset
+    batch_path = "./data/data_samples/features/{}/batch".format(dataset)
     # load filenames
     x_path = [np.string_(x) for x in sorted(glob(os.path.join(batch_path, "*.batch_x.*.t100_d100.npy")))]
     m_path = [np.string_(m) for m in sorted(glob(os.path.join(batch_path, "*.batch_m.*.t100_d100.npy")))]
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     logger = logging
 
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--input_dir', type=str, default='./scripts/data/data_samples/features',
+    parser.add_argument('--input_dir', type=str, default='./data/data_samples/features',
                         help='input directory (subdirectories are train/val/test)')
 
     args = parser.parse_args()

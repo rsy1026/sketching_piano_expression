@@ -15,14 +15,19 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from multiprocessing import Manager
 
-from model import PerformGenerator, Mask
-from sketching_piano_expression.utils.make_batches import (
+from model.piano_model import (
+    PerformGenerator, 
+    Mask
+)
+from data.make_batches import (
     corrupt_to_onset
 )
 from sketching_piano_expression.utils.parse_utils import (
     poly_predict
 )
-from generate import features_by_condition_note
+from generate import (
+    features_by_condition
+)
 
 
 # LOAD DATA
@@ -120,9 +125,12 @@ def main():
     max_norm = 1.
 
     # LOAD DATA
-    datapath = './'
-    train_data = os.path.join(datapath, 'train.h5')
-    # val_data = os.path.join(datapath, 'val.h5')
+    data_path = './data/data_samples'
+    model_path = './model/model_ckpts'
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    train_data = os.path.join(data_path, 'train.h5')
+    # val_data = os.path.join(data_path, 'val.h5')
 
     with h5py.File(train_data, "r") as f:
         train_x = np.asarray(f["x"])
@@ -136,7 +144,7 @@ def main():
     #     val_c = np.asarray(f["c"])
 
     train_len = len(train_x)
-    val_len = len(val_x)
+    # val_len = len(val_x)
     step_size = int(np.ceil(train_len / batch_size))
 
     _time0 = time.time()
@@ -179,15 +187,15 @@ def main():
     # load data loader
     train_dataset = CustomDataset(train_x, train_m, train_y, 
         train_c, same_onset_ind=same_onset_ind)
-    val_dataset = CustomDataset(val_x, val_m, val_y, 
-        val_c, same_onset_ind=same_onset_ind)
+    # val_dataset = CustomDataset(val_x, val_m, val_y, 
+        # val_c, same_onset_ind=same_onset_ind)
 
     generator = DataLoader(
         train_dataset, batch_size=batch_size, num_workers=4, 
         collate_fn=PadCollate(), shuffle=True, drop_last=True, pin_memory=False)
-    generator_val = DataLoader(
-        val_dataset, batch_size=batch_size_val, num_workers=0, 
-        collate_fn=PadCollate(), shuffle=False, pin_memory=False)
+    # generator_val = DataLoader(
+        # val_dataset, batch_size=batch_size_val, num_workers=0, 
+        # collate_fn=PadCollate(), shuffle=False, pin_memory=False)
 
     for epoch in range(int(checkpoint_num), total_epoch):
 
