@@ -9,44 +9,16 @@ from decimal import Decimal, getcontext, ROUND_HALF_UP, InvalidOperation
 
 from sketching_piano_expression.utils.match import XML_SCORE_PERFORM_MATCH as MATCH
 from sketching_piano_expression.utils.parse_utils import *
+from .make_batches import (
+    make_onset_based_all,
+    make_onset_based_pick,
+)
+
 
 dc = getcontext()
 dc.prec = 48
 dc.rounding = ROUND_HALF_UP
 
-
-def make_onset_based_all(x_data, out, same_onset_ind=None):
-    '''
-    get all notes in each onset
-    '''
-    start, end = same_onset_ind
-    same_onset = np.argmax(x_data[:,start:end], axis=-1)
-    new_out = list()
-    is_onset = [out[0]]
-    for i in range(1, x_data.shape[0]):
-        o = same_onset[i] 
-        if o == 0:
-            new_out.append(is_onset)
-            is_onset = [out[i]]
-        elif o == 1:
-            is_onset.append(out[i])
-    new_out.append(is_onset)
-    return new_out
-
-def make_onset_based_pick(x_data, out, same_onset_ind=None):
-    '''
-    get only the lowest note for each onset
-    '''
-    start, end = same_onset_ind
-    same_onset = np.argmax(x_data[:,start:end], axis=-1)
-    new_out = list()
-    for i in range(x_data.shape[0]):
-        o = same_onset[i] 
-        if o == 0:
-            new_out.append(out[i])
-        elif o == 1:
-            continue
-    return np.asarray(new_out)
 
 def crawl_yamaha_chopin():
     '''

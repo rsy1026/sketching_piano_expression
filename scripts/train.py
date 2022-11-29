@@ -19,15 +19,11 @@ from model.piano_model import (
     PerformGenerator, 
     Mask
 )
-from data.make_batches import (
-    corrupt_to_onset
-)
-from sketching_piano_expression.utils.parse_utils import (
-    poly_predict
-)
-from generate import (
-    features_by_condition
-)
+from data.make_batches import corrupt_to_onset
+from data.parse_features import make_onset_based_all
+from sketching_piano_expression.utils.parse_utils import poly_predict
+from generate import features_by_condition
+
 
 
 # LOAD DATA
