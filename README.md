@@ -48,7 +48,7 @@ You can make h5 files using the following function in `make_batches.py`:
 create_h5_datasets(dataset='train', savepath='./data/data_samples')
 ```
 
-### Training 
+## Training 
 
 Simply run the following command:
 
