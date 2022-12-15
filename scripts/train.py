@@ -356,8 +356,7 @@ def loss_fn(
 
 def kld(mu, logvar, q_mu=None, q_logvar=None):
     '''
-    KL(q(z2|x)||p(z2|u2)))(expectation along q(u2))
-        --> b/c p(z2) depends on p(u2) (p(z2|u2))
+    KL(N(mu, var)||N(qmu, qvar))
         --> -0.5 * (1 + logvar - q_logvar 
             - (exp(logvar) + (mu - q_mu)^2) / exp(q_logvar)) 
     '''
